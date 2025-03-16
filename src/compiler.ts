@@ -23,6 +23,9 @@ export class SqlCompilerImpl implements SqlCompiler {
     
     console.log('Compiling SQL AST:', JSON.stringify(ast, null, 2));
     
+    // Pre-process the AST to handle nested fields that might be parsed as table references
+    this.handleNestedFieldReferences(ast);
+    
     let result: Command[];
     
     switch (ast.type) {
@@ -226,7 +229,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       
       // Handle comparison operators
       if (typeof left === 'object' && 'column' in left && left.column) {
-        const field = left.column;
+        const field = this.processFieldName(left.column);
         const value = this.convertValue(right);
         
         const filter: Record<string, any> = {};
@@ -285,10 +288,10 @@ export class SqlCompilerImpl implements SqlCompiler {
     } else if (where.type === 'unary_expr') {
       // Handle NOT, IS NULL, IS NOT NULL
       if (where.operator === 'IS NULL' && typeof where.expr === 'object' && 'column' in where.expr) {
-        const field = where.expr.column;
+        const field = this.processFieldName(where.expr.column);
         return { [field]: { $eq: null } };
       } else if (where.operator === 'IS NOT NULL' && typeof where.expr === 'object' && 'column' in where.expr) {
-        const field = where.expr.column;
+        const field = this.processFieldName(where.expr.column);
         return { [field]: { $ne: null } };
       } else if (where.operator === 'NOT') {
         const subFilter = this.convertWhere(where.expr);
@@ -331,24 +334,116 @@ export class SqlCompilerImpl implements SqlCompiler {
     columns.forEach(column => {
       if (typeof column === 'object') {
         if ('expr' in column && column.expr) {
+          // Handle dot notation (nested fields)
           if ('column' in column.expr && column.expr.column) {
-            projection[column.expr.column] = 1;
+            const fieldName = this.processFieldName(column.expr.column);
+            projection[fieldName] = 1;
           } else if (column.expr.type === 'column_ref' && column.expr.column) {
-            projection[column.expr.column] = 1;
+            const fieldName = this.processFieldName(column.expr.column);
+            projection[fieldName] = 1;
+          } else if (column.expr.type === 'binary_expr' && column.expr.operator === '.' && 
+                     column.expr.left && column.expr.right) {
+            // Handle explicit dot notation like table.column
+            let fieldName = '';
+            if (column.expr.left.column) {
+              fieldName = column.expr.left.column;
+            }
+            if (fieldName && column.expr.right.column) {
+              fieldName += '.' + column.expr.right.column;
+              projection[fieldName] = 1;
+            }
           }
         } else if ('type' in column && column.type === 'column_ref' && column.column) {
-          projection[column.column] = 1;
+          const fieldName = this.processFieldName(column.column);
+          projection[fieldName] = 1;
         } else if ('column' in column) {
-          projection[column.column] = 1;
+          const fieldName = this.processFieldName(column.column);
+          projection[fieldName] = 1;
         }
       } else if (typeof column === 'string') {
-        projection[column] = 1;
+        const fieldName = this.processFieldName(column);
+        projection[fieldName] = 1;
       }
     });
     
     console.log('Final projection:', JSON.stringify(projection, null, 2));
     
     return projection;
+  }
+  
+  /**
+   * Process a field name to handle nested fields and array indexing
+   * Converts various formats to MongoDB dot notation:
+   * - address.zip stays as address.zip (MongoDB supports dot notation natively)
+   * - items__ARRAY_0__name becomes items.0.name 
+   * - items_0_name becomes items.0.name (from aggressive preprocessing)
+   * - table.column is recognized as a nested field, not a table reference
+   */
+  private processFieldName(fieldName: string): string {
+    if (!fieldName) return fieldName;
+    
+    // First convert our placeholder format back to MongoDB dot notation
+    // This transforms items__ARRAY_0__name => items.0.name
+    let processed = fieldName.replace(/__ARRAY_(\d+)__/g, '.$1.');
+    
+    // Also handle the case where it's at the end of the string
+    processed = processed.replace(/__ARRAY_(\d+)$/g, '.$1');
+    
+    // Handle the aggressive preprocessing format - items_0_name => items.0.name
+    processed = processed.replace(/(\w+)_(\d+)_(\w+)/g, '$1.$2.$3');
+    processed = processed.replace(/(\w+)_(\d+)$/g, '$1.$2');
+    
+    // If there's still array indexing with bracket notation, convert it too
+    // This handles any direct [0] syntax that might have made it through the parser
+    processed = processed.replace(/\[(\d+)\]/g, '.$1');
+    
+    return processed;
+  }
+  
+  /**
+   * Special handling for table references that might actually be nested fields
+   * For example, in "SELECT address.zip FROM users", 
+   * address.zip might be parsed as table "address", column "zip"
+   */
+  private handleNestedFieldReferences(ast: any): void {
+    // Handle column references in SELECT clause
+    if (ast.columns && Array.isArray(ast.columns)) {
+      ast.columns.forEach((column: any) => {
+        if (column.expr && column.expr.type === 'column_ref' && 
+            column.expr.table && column.expr.column) {
+          // This could be a nested field - convert table.column to a single column path
+          column.expr.column = `${column.expr.table}.${column.expr.column}`;
+          column.expr.table = null;
+        }
+      });
+    }
+    
+    // Handle conditions in WHERE clause
+    this.processWhereClauseForNestedFields(ast.where);
+  }
+  
+  /**
+   * Process WHERE clause to handle nested field references
+   */
+  private processWhereClauseForNestedFields(where: any): void {
+    if (!where) return;
+    
+    if (where.type === 'binary_expr') {
+      // Process left and right sides recursively
+      this.processWhereClauseForNestedFields(where.left);
+      this.processWhereClauseForNestedFields(where.right);
+      
+      // Handle column references in comparison expressions
+      if (where.left && where.left.type === 'column_ref' && 
+          where.left.table && where.left.column) {
+        // Convert table.column format to a nested field path
+        where.left.column = `${where.left.table}.${where.left.column}`;
+        where.left.table = null;
+      }
+    } else if (where.type === 'unary_expr') {
+      // Process expression in unary operators
+      this.processWhereClauseForNestedFields(where.expr);
+    }
   }
 
   /**

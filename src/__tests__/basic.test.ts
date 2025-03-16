@@ -28,6 +28,26 @@ describe('Squongo', () => {
       expect(result.ast).toBeDefined();
       expect(result.ast.type).toBe('select');
     });
+    
+    test('should parse a SELECT with nested fields', () => {
+      const sql = 'SELECT address.zip, address FROM shipping_addresses';
+      const result = parser.parse(sql);
+      
+      expect(result).toBeDefined();
+      expect(result.text).toBe(sql);
+      expect(result.ast).toBeDefined();
+      expect(result.ast.type).toBe('select');
+    });
+    
+    test('should parse a SELECT with array indexing', () => {
+      const sql = 'SELECT items[0].id, items FROM orders';
+      const result = parser.parse(sql);
+      
+      expect(result).toBeDefined();
+      expect(result.text).toBe(sql);
+      expect(result.ast).toBeDefined();
+      expect(result.ast.type).toBe('select');
+    });
 
     test('should parse an INSERT statement', () => {
       const sql = 'INSERT INTO users (id, name, age) VALUES (1, "John", 25)';
@@ -82,6 +102,38 @@ describe('Squongo', () => {
         expect(commands[0].filter).toBeDefined();
       }
     });
+    
+    test('should compile a SELECT with nested fields', () => {
+      const sql = 'SELECT address.zip, address FROM shipping_addresses';
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      expect(commands[0].collection).toBe('shipping_addresses');
+      // Check if projection includes nested field
+      if (commands[0].type === 'FIND' && commands[0].projection) {
+        expect(commands[0].projection).toBeDefined();
+        expect(commands[0].projection['address.zip']).toBe(1);
+        expect(commands[0].projection['address']).toBe(1);
+      }
+    });
+    
+    test('should compile a SELECT with array indexing', () => {
+      const sql = 'SELECT items[0].id, items FROM orders';
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      expect(commands[0].collection).toBe('orders');
+      // Check if projection includes array element access
+      if (commands[0].type === 'FIND' && commands[0].projection) {
+        expect(commands[0].projection).toBeDefined();
+        expect(commands[0].projection['items.0.id']).toBe(1);
+        expect(commands[0].projection['items']).toBe(1);
+      }
+    });
 
     test('should compile an INSERT statement', () => {
       const sql = 'INSERT INTO users (id, name, age) VALUES (1, "John", 25)';
@@ -123,6 +175,35 @@ describe('Squongo', () => {
       // Check if it's a DeleteCommand
       if (commands[0].type === 'DELETE') {
         expect(commands[0].filter).toBeDefined();
+      }
+    });
+    
+    test('should compile queries with nested field conditions', () => {
+      const sql = "SELECT * FROM users WHERE address.city = 'New York'";
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      // Check if filter includes nested field
+      if (commands[0].type === 'FIND' && commands[0].filter) {
+        expect(commands[0].filter).toBeDefined();
+        expect(commands[0].filter['address.city']).toBe('New York');
+      }
+    });
+    
+    test('should compile queries with array element conditions', () => {
+      const sql = "SELECT * FROM orders WHERE items[0].price > 100";
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      // Check if filter includes array element access
+      if (commands[0].type === 'FIND' && commands[0].filter) {
+        expect(commands[0].filter).toBeDefined();
+        expect(commands[0].filter['items.0.price']).toBeDefined();
+        expect(commands[0].filter['items.0.price'].$gt).toBe(100);
       }
     });
   });

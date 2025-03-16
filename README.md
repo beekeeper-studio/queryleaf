@@ -16,6 +16,9 @@ Squongo is a library that translates SQL queries into MongoDB commands. It parse
   - INSERT
   - UPDATE
   - DELETE
+- Advanced querying features:
+  - Nested field access (e.g., `address.zip`)
+  - Array element access (e.g., `items[0].name`)
 
 ## Installation
 
@@ -33,9 +36,17 @@ async function main() {
   const squongo = createSquongo('mongodb://localhost:27017', 'mydatabase');
   
   try {
-    // Execute a SQL query
-    const results = await squongo.execute('SELECT * FROM users WHERE age > 21');
-    console.log(results);
+    // Basic SQL query
+    const basicResults = await squongo.execute('SELECT * FROM users WHERE age > 21');
+    console.log('Basic query results:', basicResults);
+    
+    // Query with nested fields
+    const nestedResults = await squongo.execute('SELECT name, address.city, address.zip FROM users WHERE address.country = "USA"');
+    console.log('Nested fields query results:', nestedResults);
+    
+    // Query with array access
+    const arrayResults = await squongo.execute('SELECT order_id, items[0].name, items[0].price FROM orders WHERE items[0].price > 100');
+    console.log('Array access query results:', arrayResults);
   } catch (error) {
     console.error('Error executing query:', error);
   } finally {
@@ -60,6 +71,8 @@ This example demonstrates:
 - Filtering with WHERE clauses
 - Sorting with ORDER BY
 - INSERT, UPDATE, and DELETE operations
+- Accessing nested fields with dot notation
+- Accessing array elements with indexing
 
 ## Architecture
 

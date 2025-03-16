@@ -12,6 +12,27 @@ async function main() {
   const squongo = createSquongo(connectionString, dbName);
   
   try {
+    // Setup sample data with nested structures and arrays
+    console.log('\nSetting up sample data with nested structures and arrays...');
+    
+    await squongo.execute(`
+      INSERT INTO users (_id, name, age, email, active, address) VALUES 
+      ('101', 'Nested User', 30, 'nested@example.com', true, {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "zip": "10001"
+      })
+    `);
+    
+    await squongo.execute(`
+      INSERT INTO orders (_id, userId, items, total) VALUES 
+      ('201', '101', [
+        { "id": "item1", "name": "Laptop", "price": 1200 },
+        { "id": "item2", "name": "Mouse", "price": 25 }
+      ], 1225)
+    `);
+    
     // Example SQL queries
     const queries = [
       // Basic SELECT
@@ -22,6 +43,18 @@ async function main() {
       
       // SELECT with ORDER BY
       'SELECT * FROM products ORDER BY price DESC LIMIT 3',
+      
+      // Nested field queries - show accessing address fields
+      "SELECT name, address.city, address.zip FROM users WHERE _id = '101'",
+      
+      // Query with nested field condition
+      "SELECT * FROM users WHERE address.city = 'New York'",
+      
+      // Array element access - query showing array indices
+      "SELECT _id, items[0].name, items[0].price FROM orders WHERE _id = '201'",
+      
+      // Array element condition
+      "SELECT _id, userId FROM orders WHERE items[0].price > 1000",
       
       // INSERT example
       "INSERT INTO users (_id, name, age, email, active) VALUES ('100', 'Example User', 25, 'example@example.com', true)",
@@ -39,7 +72,11 @@ async function main() {
       "DELETE FROM users WHERE _id = '100'",
       
       // SELECT to verify the deletion
-      "SELECT * FROM users WHERE _id = '100'"
+      "SELECT * FROM users WHERE _id = '100'",
+      
+      // Clean up sample data
+      "DELETE FROM users WHERE _id = '101'",
+      "DELETE FROM orders WHERE _id = '201'"
     ];
     
     // Execute each query and display results

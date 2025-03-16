@@ -1,0 +1,25 @@
+# Compiled output
+/dist
+/build
+
+# Dependencies
+/node_modules
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs and temp files
+*.log
+tmp/
+temp/
+
+# Optional: if you use a package manager other than npm
+# yarn.lock
+# pnpm-lock.yaml
+# or if you use specific test result files
+# coverage/
+# test-results/

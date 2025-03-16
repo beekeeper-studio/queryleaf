@@ -1,0 +1,37 @@
+{
+  "name": "squongo",
+  "version": "0.1.0",
+  "description": "SQL to MongoDB command compiler",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "test": "jest",
+    "test:integration": "jest src/__tests__/integration.integration.test.ts --runInBand",
+    "dev": "ts-node src/index.ts",
+    "example": "ts-node src/examples/basic-usage.ts"
+  },
+  "keywords": [
+    "sql",
+    "mongodb",
+    "compiler",
+    "query"
+  ],
+  "author": "",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "mongodb": "^6.14.2",
+    "node-sql-parser": "^4.11.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/mongodb": "^4.0.7",
+    "@types/node": "^22.13.10",
+    "jest": "^29.7.0",
+    "testcontainers": "^10.20.0",
+    "ts-jest": "^29.2.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
+}

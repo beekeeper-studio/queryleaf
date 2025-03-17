@@ -402,6 +402,8 @@ export class SqlCompilerImpl implements SqlCompiler {
   private processFieldName(fieldName: string): string {
     if (!fieldName) return fieldName;
     
+    console.log(`Processing field name: "${fieldName}"`);
+    
     // First convert our placeholder format back to MongoDB dot notation
     // This transforms items__ARRAY_0__name => items.0.name
     let processed = fieldName.replace(/__ARRAY_(\d+)__/g, '.$1.');
@@ -417,6 +419,12 @@ export class SqlCompilerImpl implements SqlCompiler {
     // This handles any direct [0] syntax that might have made it through the parser
     processed = processed.replace(/\[(\d+)\]/g, '.$1');
     
+    // Handle nested field access directly
+    // MongoDB already uses dot notation for nested fields, so we can use it as is
+    if (processed.includes('.')) {
+      console.log(`Using nested field in MongoDB filter: "${processed}"`);
+    }
+    
     return processed;
   }
   
@@ -426,6 +434,8 @@ export class SqlCompilerImpl implements SqlCompiler {
    * address.zip might be parsed as table "address", column "zip"
    */
   private handleNestedFieldReferences(ast: any): void {
+    console.log('Handling nested field references in AST');
+    
     // Handle column references in SELECT clause
     if (ast.columns && Array.isArray(ast.columns)) {
       ast.columns.forEach((column: any) => {
@@ -434,12 +444,16 @@ export class SqlCompilerImpl implements SqlCompiler {
           // This could be a nested field - convert table.column to a single column path
           column.expr.column = `${column.expr.table}.${column.expr.column}`;
           column.expr.table = null;
+          console.log(`Converted SELECT column to nested field: ${column.expr.column}`);
         }
       });
     }
     
     // Handle conditions in WHERE clause
     this.processWhereClauseForNestedFields(ast.where);
+    
+    // For debugging - show the resulting AST after transformation
+    console.log('AST after nested field handling:', JSON.stringify(ast?.where, null, 2));
   }
   
   /**
@@ -448,17 +462,28 @@ export class SqlCompilerImpl implements SqlCompiler {
   private processWhereClauseForNestedFields(where: any): void {
     if (!where) return;
     
+    console.log('Processing WHERE clause for nested fields:', JSON.stringify(where, null, 2));
+    
     if (where.type === 'binary_expr') {
       // Process left and right sides recursively
       this.processWhereClauseForNestedFields(where.left);
       this.processWhereClauseForNestedFields(where.right);
       
       // Handle column references in comparison expressions
-      if (where.left && where.left.type === 'column_ref' && 
-          where.left.table && where.left.column) {
-        // Convert table.column format to a nested field path
-        where.left.column = `${where.left.table}.${where.left.column}`;
-        where.left.table = null;
+      if (where.left && where.left.type === 'column_ref') {
+        console.log('Processing column reference:', JSON.stringify(where.left, null, 2));
+        
+        // Handle both direct dot notation in column name and table.column format
+        if (where.left.column && where.left.column.includes('.')) {
+          // Already has dot notation, just keep it
+          console.log('Column already has dot notation:', where.left.column);
+        } else if (where.left.table && where.left.column) {
+          // Convert table.column format to a nested field path
+          console.log('Converting table.column to nested path:', 
+            `${where.left.table}.${where.left.column}`);
+          where.left.column = `${where.left.table}.${where.left.column}`;
+          where.left.table = null;
+        }
       }
     } else if (where.type === 'unary_expr') {
       // Process expression in unary operators

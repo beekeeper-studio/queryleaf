@@ -1,6 +1,6 @@
 import { SqlParserImpl } from '../parser';
 import { SqlCompilerImpl } from '../compiler';
-import { createSquongo, SquongoImpl } from '../index';
+import { createSquongo, QueryLeafImpl as SquongoImpl } from '../index';
 
 // Mock the MongoDB executor to avoid actual database connections during tests
 jest.mock('../executor', () => {
@@ -272,7 +272,7 @@ describe('Squongo', () => {
     });
   });
 
-  describe('SquongoImpl', () => {
+  describe('QueryLeafImpl', () => {
     test('should execute a SQL query', async () => {
       const squongo = createSquongo('mongodb://localhost:27017', 'test');
       const result = await squongo.execute('SELECT * FROM users WHERE age > 18');

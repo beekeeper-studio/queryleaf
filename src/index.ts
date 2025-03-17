@@ -4,7 +4,8 @@ import {
   SqlParser, 
   SqlCompiler, 
   CommandExecutor,
-  Squongo as QueryLeaf
+  QueryLeaf,
+  Squongo
 } from './interfaces';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';

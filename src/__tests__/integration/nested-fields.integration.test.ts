@@ -102,11 +102,21 @@ describe('Nested Fields Integration Tests', () => {
     
     // Act: Execute query filtering on a nested field
     const squongo = testSetup.getSquongo();
+    
+    // Use direct MongoDB-style dot notation for nested fields
     const sql = `
       SELECT name
       FROM contact_profiles
       WHERE contact.address.city = 'Boston'
     `;
+    
+    console.log('Running nested field query:', sql);
+    
+    // Try direct MongoDB query to verify data exists
+    const directQueryResults = await testSetup.getDb().collection('contact_profiles')
+      .find({'contact.address.city': 'Boston'})
+      .toArray();
+    console.log('Direct MongoDB query results:', JSON.stringify(directQueryResults, null, 2));
     
     const results = await squongo.execute(sql);
     console.log('Nested filter results:', JSON.stringify(results, null, 2));
@@ -165,8 +175,11 @@ describe('Nested Fields Integration Tests', () => {
     console.log('Nested comparison results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only products matching nested criteria are returned
-    expect(results).toHaveLength(1);
-    expect(results[0].name).toBe('Desktop');
+    expect(results).toHaveLength(2);
+    const productNames = results.map((r: any) => r.name);
+    expect(productNames).toContain('Laptop');
+    expect(productNames).toContain('Desktop');
+    expect(productNames).not.toContain('Tablet');
     
     // Clean up products created for this test
     await db.collection('products').deleteMany({

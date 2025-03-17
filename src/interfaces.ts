@@ -109,7 +109,15 @@ export interface CommandExecutor {
 /**
  * Main QueryLeaf interface
  */
-export interface Squongo {
+export interface QueryLeaf {
+  execute(sql: string): Promise<any>;
+  parse(sql: string): SqlStatement;
+  compile(statement: SqlStatement): Command[];
+  getExecutor(): CommandExecutor;
+  close(): Promise<void>;
+}
+
+export interface Squongo extends QueryLeaf {
   execute(sql: string): Promise<any>;
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];

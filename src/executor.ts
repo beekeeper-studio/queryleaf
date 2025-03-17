@@ -90,6 +90,12 @@ export class MongoExecutor implements CommandExecutor {
    * Execute a FIND command
    */
   private async executeFind(database: any, command: FindCommand): Promise<any> {
+    // Check if we should use aggregation pipeline
+    if (command.pipeline && command.pipeline.length > 0) {
+      return this.executeAggregatePipeline(database, command);
+    }
+    
+    // Otherwise, perform a regular find
     // Convert string ObjectIds to actual ObjectIds
     if (command.filter) {
       command.filter = this.convertObjectIds(command.filter);
@@ -122,6 +128,29 @@ export class MongoExecutor implements CommandExecutor {
     console.log('FIND results count:', results.length);
     if (results.length > 0) {
       console.log('First result:', JSON.stringify(results[0], null, 2));
+    }
+    
+    return results;
+  }
+  
+  /**
+   * Execute a find command using the aggregation pipeline
+   */
+  private async executeAggregatePipeline(database: any, command: FindCommand): Promise<any> {
+    if (!command.pipeline || command.pipeline.length === 0) {
+      throw new Error('Aggregation pipeline is required');
+    }
+    
+    console.log('Executing aggregation pipeline:', JSON.stringify(command.pipeline, null, 2));
+    
+    // Convert ObjectIds in the pipeline stages
+    const pipeline = command.pipeline.map(stage => this.convertObjectIds(stage));
+    
+    const results = await database.collection(command.collection).aggregate(pipeline).toArray();
+    
+    console.log('Aggregation results count:', results.length);
+    if (results.length > 0) {
+      console.log('First aggregation result:', JSON.stringify(results[0], null, 2));
     }
     
     return results;

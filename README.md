@@ -19,6 +19,8 @@ Squongo is a library that translates SQL queries into MongoDB commands. It parse
 - Advanced querying features:
   - Nested field access (e.g., `address.zip`)
   - Array element access (e.g., `items[0].name`)
+  - GROUP BY with aggregation functions (COUNT, SUM, AVG, MIN, MAX)
+  - JOINs between collections
 
 ## Installation
 
@@ -73,6 +75,8 @@ This example demonstrates:
 - INSERT, UPDATE, and DELETE operations
 - Accessing nested fields with dot notation
 - Accessing array elements with indexing
+- Aggregation with GROUP BY and aggregation functions
+- Joining collections with JOIN syntax
 
 ## Architecture
 

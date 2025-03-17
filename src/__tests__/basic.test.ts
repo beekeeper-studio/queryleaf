@@ -88,6 +88,8 @@ describe('Squongo', () => {
   describe('SqlCompilerImpl', () => {
     const parser = new SqlParserImpl();
     const compiler = new SqlCompilerImpl();
+    
+    // Test different types of SELECT queries
 
     test('should compile a SELECT statement', () => {
       const sql = 'SELECT id, name, age FROM users WHERE age > 18';
@@ -204,6 +206,68 @@ describe('Squongo', () => {
         expect(commands[0].filter).toBeDefined();
         expect(commands[0].filter['items.0.price']).toBeDefined();
         expect(commands[0].filter['items.0.price'].$gt).toBe(100);
+      }
+    });
+    
+    test('should compile GROUP BY queries with aggregation', () => {
+      const sql = "SELECT category, COUNT(*) as count, AVG(price) as avg_price FROM products GROUP BY category";
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      
+      // Check if it generates proper aggregation pipeline
+      if (commands[0].type === 'FIND') {
+        expect(commands[0].group).toBeDefined();
+        expect(commands[0].pipeline).toBeDefined();
+        
+        // Check if the pipeline contains a $group stage
+        if (commands[0].pipeline) {
+          const groupStage = commands[0].pipeline.find(stage => '$group' in stage);
+          expect(groupStage).toBeDefined();
+          if (groupStage) {
+            // Just check the overall structure rather than specific field names
+            expect(groupStage.$group._id).toBeDefined();
+            // The property might be different based on the AST format
+            expect(groupStage.$group.count).toBeDefined();
+            expect(groupStage.$group.avg_price).toBeDefined();
+            
+            // Check that the operations use the right aggregation operators
+            expect(groupStage.$group.count.$sum).toBeDefined();
+            expect(groupStage.$group.avg_price.$avg).toBeDefined();
+          }
+        }
+      }
+    });
+    
+    test('should compile JOIN queries', () => {
+      const sql = "SELECT users.name, orders.total FROM users JOIN orders ON users._id = orders.userId";
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      
+      // Check if it generates proper lookup for the join
+      if (commands[0].type === 'FIND') {
+        expect(commands[0].lookup).toBeDefined();
+        expect(commands[0].pipeline).toBeDefined();
+        
+        // Check if the pipeline contains a $lookup stage
+        if (commands[0].pipeline) {
+          const lookupStage = commands[0].pipeline.find(stage => '$lookup' in stage);
+          expect(lookupStage).toBeDefined();
+          if (lookupStage) {
+            expect(lookupStage.$lookup.from).toBe('orders');
+            expect(lookupStage.$lookup.localField).toBe('_id');
+            expect(lookupStage.$lookup.foreignField).toBe('userId');
+          }
+          
+          // Check if it's followed by an $unwind stage
+          const unwindStage = commands[0].pipeline.find(stage => '$unwind' in stage);
+          expect(unwindStage).toBeDefined();
+        }
       }
     });
   });

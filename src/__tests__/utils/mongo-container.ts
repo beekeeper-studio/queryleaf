@@ -55,15 +55,29 @@ export class MongoTestContainer {
    * Stop the MongoDB container
    */
   async stop(): Promise<void> {
+    // Make sure to properly close all connections
     if (this.client) {
-      await this.client.close();
-      this.client = null;
+      try {
+        console.log('Closing MongoDB client connection...');
+        await this.client.close(true); // Force close all connections
+        this.client = null;
+      } catch (err) {
+        console.error('Error closing MongoDB client:', err);
+      }
     }
     
+    // Stop the container
     if (this.container) {
-      await this.container.stop();
-      this.container = null;
+      try {
+        console.log('Stopping MongoDB container...');
+        await this.container.stop();
+        this.container = null;
+      } catch (err) {
+        console.error('Error stopping container:', err);
+      }
     }
+    
+    console.log('MongoDB cleanup complete');
   }
 }
 

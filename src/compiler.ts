@@ -67,6 +67,26 @@ export class SqlCompilerImpl implements SqlCompiler {
       projection: ast.columns ? this.convertColumns(ast.columns) : undefined,
     };
 
+    // Handle GROUP BY clause
+    if (ast.groupby) {
+      command.group = this.convertGroupBy(ast.groupby, ast.columns);
+      
+      // Check if we need to use aggregate pipeline instead of simple find
+      if (command.group) {
+        command.pipeline = this.createAggregatePipeline(command);
+      }
+    }
+    
+    // Handle JOINs
+    if (ast.from && ast.from.length > 1) {
+      command.lookup = this.convertJoins(ast.from, ast.where);
+      
+      // When using JOINs, we need to use the aggregate pipeline
+      if (!command.pipeline) {
+        command.pipeline = this.createAggregatePipeline(command);
+      }
+    }
+
     if (ast.limit) {
       console.log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
       if (typeof ast.limit === 'object' && 'value' in ast.limit) {
@@ -455,12 +475,334 @@ export class SqlCompilerImpl implements SqlCompiler {
     orderby.forEach(item => {
       if (typeof item === 'object' && 'expr' in item && item.expr) {
         if ('column' in item.expr && item.expr.column) {
-          const column = item.expr.column;
+          const column = this.processFieldName(item.expr.column);
           sort[column] = item.type === 'ASC' ? 1 : -1;
         }
       }
     });
     
     return sort;
+  }
+
+  /**
+   * Convert SQL GROUP BY to MongoDB group stage
+   */
+  private convertGroupBy(groupby: any[], columns: any[]): { _id: any; [key: string]: any } | undefined {
+    if (!groupby || !Array.isArray(groupby) || groupby.length === 0) {
+      return undefined;
+    }
+
+    console.log('Converting GROUP BY:', JSON.stringify(groupby, null, 2));
+    console.log('With columns:', JSON.stringify(columns, null, 2));
+
+    // Create the group stage
+    let group: { _id: any; [key: string]: any };
+    
+    // If there's only one group by field, simplify the _id structure
+    if (groupby.length === 1) {
+      // Extract the single field name
+      let singleField = '';
+      if (typeof groupby[0] === 'object') {
+        // Type 1: { column: 'field' }
+        if (groupby[0].column) {
+          singleField = this.processFieldName(groupby[0].column);
+        } 
+        // Type 2: { type: 'column_ref', column: 'field' }
+        else if (groupby[0].type === 'column_ref' && groupby[0].column) {
+          singleField = this.processFieldName(groupby[0].column);
+        }
+        // Type 3: { expr: { column: 'field' } }
+        else if (groupby[0].expr && groupby[0].expr.column) {
+          singleField = this.processFieldName(groupby[0].expr.column);
+        }
+      }
+      
+      if (singleField) {
+        // For a single field, use a simplified ID structure
+        group = {
+          _id: `$${singleField}`,
+          [singleField]: { $first: `$${singleField}` } // Include the field in results too
+        };
+      } else {
+        // Fallback if we can't extract the field
+        group = { _id: null };
+      }
+    } else {
+      // For multiple fields, use the object structure for _id
+      const groupFields: Record<string, any> = {};
+      groupby.forEach(item => {
+        if (typeof item === 'object') {
+          let field = '';
+          // Type 1: { column: 'field' }
+          if (item.column) {
+            field = this.processFieldName(item.column);
+          } 
+          // Type 2: { type: 'column_ref', column: 'field' }
+          else if (item.type === 'column_ref' && item.column) {
+            field = this.processFieldName(item.column);
+          }
+          // Type 3: { expr: { column: 'field' } }
+          else if (item.expr && item.expr.column) {
+            field = this.processFieldName(item.expr.column);
+          }
+          
+          if (field) {
+            groupFields[field] = `$${field}`;
+          }
+        }
+      });
+      
+      group = {
+        _id: groupFields
+      };
+    }
+    
+    // Add aggregations for other columns
+    if (columns && Array.isArray(columns)) {
+      columns.forEach(column => {
+        if (typeof column === 'object') {
+          // Check for aggregation functions like COUNT, SUM, AVG, etc.
+          if (column.expr && column.expr.type && 
+              (column.expr.type === 'function' || column.expr.type === 'aggr_func')) {
+            
+            const funcName = column.expr.name.toLowerCase();
+            const args = column.expr.args && column.expr.args.expr ? 
+                         column.expr.args.expr : 
+                         column.expr.args;
+            
+            let field = '*';
+            if (args && args.column) {
+              field = this.processFieldName(args.column);
+            } else if (args && args.type === 'star') {
+              // COUNT(*) case
+              field = '*';
+            }
+            
+            // Use the specified alias or create one
+            let alias = column.as || `${funcName}_${field}`;
+            
+            // Map SQL functions to MongoDB aggregation operators
+            switch (funcName) {
+              case 'count':
+                group[alias] = { $sum: 1 };
+                break;
+              case 'sum':
+                group[alias] = { $sum: `$${field}` };
+                break;
+              case 'avg':
+                group[alias] = { $avg: `$${field}` };
+                break;
+              case 'min':
+                group[alias] = { $min: `$${field}` };
+                break;
+              case 'max':
+                group[alias] = { $max: `$${field}` };
+                break;
+            }
+          } else if (column.expr && column.expr.type === 'column_ref') {
+            // Include GROUP BY fields directly in the results
+            const field = this.processFieldName(column.expr.column);
+            
+            // Only add if this is one of our group by fields
+            const isGroupByField = groupby.some(g => {
+              if (typeof g === 'object') {
+                if (g.column) {
+                  return g.column === column.expr.column;
+                } else if (g.type === 'column_ref' && g.column) {
+                  return g.column === column.expr.column;
+                } else if (g.expr && g.expr.column) {
+                  return g.expr.column === column.expr.column;
+                }
+              }
+              return false;
+            });
+            
+            if (isGroupByField) {
+              // Use $first to just take the first value from each group
+              // since all values in the group should be the same for this field
+              group[field] = { $first: `$${field}` };
+            }
+          }
+        }
+      });
+    }
+    
+    console.log('Generated group stage:', JSON.stringify(group, null, 2));
+    return group;
+  }
+  
+  /**
+   * Create a MongoDB aggregation pipeline from a FindCommand
+   */
+  private createAggregatePipeline(command: FindCommand): Record<string, any>[] {
+    const pipeline: Record<string, any>[] = [];
+    
+    // Start with $match if we have a filter
+    if (command.filter) {
+      pipeline.push({ $match: command.filter });
+    }
+    
+    // Add $lookup stages for JOINs
+    if (command.lookup && command.lookup.length > 0) {
+      command.lookup.forEach(lookup => {
+        pipeline.push({
+          $lookup: {
+            from: lookup.from,
+            localField: lookup.localField,
+            foreignField: lookup.foreignField,
+            as: lookup.as
+          }
+        });
+        
+        // Add $unwind stage to flatten the joined array
+        pipeline.push({
+          $unwind: {
+            path: "$" + lookup.as,
+            preserveNullAndEmptyArrays: true
+          }
+        });
+      });
+    }
+    
+    // Add $group stage if grouping is requested
+    if (command.group) {
+      pipeline.push({ $group: command.group });
+    }
+    
+    // Add $sort if sort is specified
+    if (command.sort) {
+      pipeline.push({ $sort: command.sort });
+    }
+    
+    // Add $skip if skip is specified
+    if (command.skip) {
+      pipeline.push({ $skip: command.skip });
+    }
+    
+    // Add $limit if limit is specified
+    if (command.limit) {
+      pipeline.push({ $limit: command.limit });
+    }
+    
+    // Add $project if projection is specified
+    if (command.projection && Object.keys(command.projection).length > 0) {
+      pipeline.push({ $project: command.projection });
+    }
+    
+    console.log('Generated aggregate pipeline:', JSON.stringify(pipeline, null, 2));
+    return pipeline;
+  }
+  
+  /**
+   * Convert SQL JOINs to MongoDB $lookup stages
+   */
+  private convertJoins(from: any[], where: any): { from: string; localField: string; foreignField: string; as: string }[] {
+    if (!from || !Array.isArray(from) || from.length <= 1) {
+      return [];
+    }
+    
+    console.log('Converting JOINs:', JSON.stringify(from, null, 2));
+    console.log('With WHERE:', JSON.stringify(where, null, 2));
+    
+    const lookups: { from: string; localField: string; foreignField: string; as: string }[] = [];
+    const mainTable = this.extractTableName(from[0]);
+    
+    // Extract join conditions from the WHERE clause
+    // This is a simplification that assumes the ON conditions are in the WHERE clause
+    const joinConditions = this.extractJoinConditions(where, from);
+    
+    // Process each table after the first one (the main table)
+    for (let i = 1; i < from.length; i++) {
+      const joinedTable = this.extractTableName(from[i]);
+      const alias = from[i].as || joinedTable;
+      
+      // Look for JOIN condition for this table
+      const joinCond = joinConditions.find(
+        cond => (cond.leftTable === mainTable && cond.rightTable === joinedTable) ||
+               (cond.leftTable === joinedTable && cond.rightTable === mainTable)
+      );
+      
+      if (joinCond) {
+        const localField = joinCond.leftTable === mainTable ? joinCond.leftField : joinCond.rightField;
+        const foreignField = joinCond.leftTable === mainTable ? joinCond.rightField : joinCond.leftField;
+        
+        lookups.push({
+          from: joinedTable,
+          localField,
+          foreignField,
+          as: alias
+        });
+      } else {
+        // If no explicit join condition was found, assume it's a cross join
+        // or guess based on common naming conventions (e.g., userId -> _id)
+        let localField = '_id';
+        let foreignField = `${mainTable.toLowerCase().replace(/s$/, '')}Id`;
+        
+        lookups.push({
+          from: joinedTable,
+          localField,
+          foreignField,
+          as: alias
+        });
+      }
+    }
+    
+    console.log('Generated lookups:', JSON.stringify(lookups, null, 2));
+    return lookups;
+  }
+  
+  /**
+   * Extract join conditions from the WHERE clause
+   */
+  private extractJoinConditions(where: any, tables: any[]): Array<{
+    leftTable: string;
+    leftField: string;
+    rightTable: string;
+    rightField: string;
+  }> {
+    if (!where) {
+      return [];
+    }
+    
+    const tableNames = tables.map(t => {
+      if (typeof t === 'string') return t;
+      return t.table;
+    });
+    
+    const conditions: Array<{
+      leftTable: string;
+      leftField: string;
+      rightTable: string;
+      rightField: string;
+    }> = [];
+    
+    // For equality comparisons in the WHERE clause that reference different tables
+    if (where.type === 'binary_expr' && where.operator === '=') {
+      if (where.left && where.left.type === 'column_ref' && where.left.table &&
+          where.right && where.right.type === 'column_ref' && where.right.table) {
+        
+        const leftTable = where.left.table;
+        const leftField = where.left.column;
+        const rightTable = where.right.table;
+        const rightField = where.right.column;
+        
+        if (tableNames.includes(leftTable) && tableNames.includes(rightTable)) {
+          conditions.push({
+            leftTable,
+            leftField,
+            rightTable,
+            rightField
+          });
+        }
+      }
+    } 
+    // For AND conditions, recursively extract join conditions from both sides
+    else if (where.type === 'binary_expr' && where.operator === 'AND') {
+      const leftConditions = this.extractJoinConditions(where.left, tables);
+      const rightConditions = this.extractJoinConditions(where.right, tables);
+      conditions.push(...leftConditions, ...rightConditions);
+    }
+    
+    return conditions;
   }
 }

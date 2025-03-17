@@ -1,0 +1,95 @@
+# Squongo Project TODO List
+
+## Integration Tests to Add
+
+### Simple Queries
+- [ ] Test SELECT with multiple column aliases
+- [ ] Test SELECT with arithmetic operations in projections
+- [x] Test SELECT with multiple WHERE conditions connected by OR
+- [ ] Test SELECT with IN operator
+- [ ] Test SELECT with NOT IN operator
+- [ ] Test SELECT with NULL/NOT NULL checks
+- [ ] Test SELECT with LIMIT and OFFSET
+- [ ] Test SELECT with ORDER BY multiple fields
+- [ ] Test SELECT with ORDER BY ASC/DESC combinations
+
+### Nested Field Access
+- [ ] Test querying on deeply nested fields (3+ levels deep)
+- [ ] Test projecting multiple nested fields simultaneously
+- [x] Test filtering with comparisons on nested fields
+- [ ] Test updating nested fields
+- [x] Test nested field access with complex WHERE conditions
+
+### Array Access
+- [ ] Test querying arrays with multiple indices
+- [x] Test filtering by array element properties at different indices
+- [ ] Test filtering by multiple array elements simultaneously
+- [ ] Test projecting multiple array elements in one query
+- [ ] Test array access with nested arrays
+- [ ] Test updating array elements
+
+### GROUP BY
+- [ ] Test GROUP BY with multiple columns
+- [ ] Test GROUP BY with HAVING clause
+- [ ] Test GROUP BY with multiple aggregation functions
+- [x] Test aggregation functions: AVG, MIN, MAX, COUNT 
+- [ ] Test GROUP BY with ORDER BY on aggregation results
+- [ ] Test GROUP BY with complex expressions
+- [ ] Test GROUP BY with filtering before aggregation
+- [ ] Test GROUP BY on nested fields
+- [ ] Test performance with large dataset aggregation
+
+### JOINs
+- [x] Test INNER JOIN with multiple conditions
+- [ ] Test LEFT OUTER JOIN implementation
+- [ ] Test RIGHT OUTER JOIN implementation
+- [ ] Test FULL OUTER JOIN implementation
+- [ ] Test JOIN with WHERE conditions
+- [ ] Test multiple JOINs in one query (3+ tables)
+- [ ] Test JOINs with aggregation
+- [ ] Test JOINs with nested field access
+- [ ] Test JOINs with array field access
+- [ ] Test performance with large dataset JOINs
+
+### Advanced Features
+- [ ] Test CASE statements in SELECT list
+- [ ] Test subqueries in WHERE clause
+- [ ] Test subqueries in FROM clause
+- [ ] Test window functions if supported
+- [ ] Test date/time functions
+- [ ] Test string functions
+
+### Edge Cases
+- [ ] Test handling of special characters in field names
+- [ ] Test handling of extremely large result sets
+- [ ] Test behavior with invalid SQL syntax
+- [ ] Test behavior with valid SQL but unsupported features
+- [ ] Test behavior with missing collections
+- [ ] Test behavior with invalid data types
+- [ ] Test handling of MongoDB ObjectId conversions
+
+## Performance Testing
+- [ ] Benchmark simple queries vs native MongoDB queries
+- [ ] Benchmark complex queries vs native MongoDB queries
+- [ ] Benchmark with increasing dataset sizes (10K, 100K, 1M documents)
+- [ ] Identify bottlenecks in the translation process
+- [ ] Optimize query execution for common patterns
+
+## Documentation
+- [ ] Document SQL syntax support and limitations
+- [ ] Create examples of each supported SQL feature
+- [ ] Document MongoDB query translation for each SQL feature
+- [ ] Create a troubleshooting guide
+- [ ] Add inline code documentation
+
+## Feature Enhancements
+- [ ] Add support for SQL DISTINCT
+- [ ] Implement SQL subquery support
+- [ ] Support for data types (DATE, TIMESTAMP, BOOLEAN)
+- [ ] Add basic transaction support
+- [ ] Support for SQL UNION, INTERSECT, EXCEPT
+- [ ] Add index creation/management via SQL
+- [ ] Implement execution plan visualization
+- [ ] Add query caching
+- [ ] Support for conditional expressions (CASE)
+- [ ] Add execution metrics and query profiling

@@ -56,6 +56,12 @@ async function main() {
       // Array element condition
       "SELECT _id, userId FROM orders WHERE items[0].price > 1000",
       
+      // GROUP BY with aggregation functions
+      "SELECT status, COUNT(*) as count, SUM(total) as total_amount FROM orders GROUP BY status",
+      
+      // JOIN between collections
+      "SELECT u.name, o._id as order_id, o.total FROM users u JOIN orders o ON u._id = o.userId",
+      
       // INSERT example
       "INSERT INTO users (_id, name, age, email, active) VALUES ('100', 'Example User', 25, 'example@example.com', true)",
       

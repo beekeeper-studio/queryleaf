@@ -31,6 +31,17 @@ export interface FindCommand extends BaseCommand {
   sort?: Record<string, any>;
   limit?: number;
   skip?: number;
+  group?: {
+    _id: any;
+    [key: string]: any;
+  };
+  pipeline?: Record<string, any>[];
+  lookup?: {
+    from: string;
+    localField: string;
+    foreignField: string;
+    as: string;
+  }[];
 }
 
 /**

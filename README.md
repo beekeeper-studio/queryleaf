@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="queryleaf-logo.svg" alt="QueryLeaf Logo" width="150" height="150">
+  <img src="queryleaf-logo.svg" alt="QueryLeaf Logo" width="120" height="120">
 </p>
 
 <h1 align="center">QueryLeaf</h1>

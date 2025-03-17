@@ -1,0 +1,86 @@
+site_name: QueryLeaf
+site_description: SQL to MongoDB query translator for NodeJS
+site_url: https://queryleaf.com/
+repo_url: https://github.com/beekeeper-studio/queryleaf
+repo_name: beekeeper-studio/queryleaf
+
+theme:
+  name: material
+  palette:
+    primary: green
+    accent: light green
+  logo: assets/logo-white.svg
+  favicon: assets/favicon.ico
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.tabs
+    - navigation.top
+    - content.tabs.link
+    - content.code.copy
+    - content.code.annotate
+  custom_dir: docs/overrides
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - getting-started/installation.md
+    - getting-started/quickstart.md
+  - Usage:
+    - usage/core-concepts.md
+    - usage/mongodb-client.md
+    - usage/dummy-client.md
+    - usage/examples.md
+  - SQL Syntax:
+    - sql-syntax/index.md
+    - sql-syntax/select.md
+    - sql-syntax/insert.md
+    - sql-syntax/update.md
+    - sql-syntax/delete.md
+    - sql-syntax/nested-fields.md
+    - sql-syntax/array-access.md
+    - sql-syntax/joins.md
+    - sql-syntax/group-by.md
+  - Debugging:
+    - debugging/troubleshooting.md
+    - debugging/limitations.md
+  - Pricing: pricing.md
+  - Licenses:
+    - licenses/agpl.md
+    - licenses/commercial.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/beekeeper-studio/queryleaf
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/beekeeperstudio
+
+plugins:
+  - search
+  - glightbox
+  - minify:
+      minify_html: true
+
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/home.css
+
+copyright: Copyright &copy; 2023-2025 Beekeeper Studio Ltd.

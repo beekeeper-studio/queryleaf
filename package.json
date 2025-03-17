@@ -13,7 +13,10 @@
     "test:all": "npm run test:unit && npm run test:integration",
     "typecheck": "tsc --noEmit",
     "dev": "ts-node src/index.ts",
-    "example": "ts-node src/examples/basic-usage.ts"
+    "example": "ts-node src/examples/basic-usage.ts",
+    "docs:serve": "mkdocs serve",
+    "docs:build": "mkdocs build",
+    "docs:deploy": "mkdocs gh-deploy --force"
   },
   "keywords": [
     "sql",

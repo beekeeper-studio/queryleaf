@@ -1,6 +1,7 @@
 # Compiled output
 /dist
 /build
+/site
 
 # Dependencies
 /node_modules

@@ -174,7 +174,7 @@ class DummyCursor {
     console.log(`[DUMMY MongoDB] Executing ${this.operation} on ${this.collectionName}`);
     if (this.projectionObj) console.log(`  - Projection:`, JSON.stringify(this.projectionObj, null, 2));
     if (this.sortObj) console.log(`  - Sort:`, JSON.stringify(this.sortObj, null, 2));
-    if (this.limitVal !== null) console.log(`  - Limit:`, this.limitVal);
+    if (this.limitVal !== null && this.limitVal > 0) console.log(`  - Limit:`, this.limitVal);
     if (this.skipVal !== null) console.log(`  - Skip:`, this.skipVal);
     
     // Return a dummy result indicating this is a simulation

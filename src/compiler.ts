@@ -89,11 +89,15 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     if (ast.limit) {
       console.log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
-      if (typeof ast.limit === 'object' && 'value' in ast.limit) {
+      if (typeof ast.limit === 'object' && 'value' in ast.limit && ast.limit.value) {
+        // Standard PostgreSQL LIMIT format
         command.limit = Number(ast.limit.value);
-      } else if (typeof ast.limit === 'object' && 'separator' in ast.limit && Array.isArray(ast.limit.value)) {
-        // Handle MySQL style LIMIT
-        command.limit = Number(ast.limit.value[0].value);
+      } else if (typeof ast.limit === 'object' && 'seperator' in ast.limit && Array.isArray(ast.limit.value)) {
+        // Handle PostgreSQL style LIMIT
+        if (ast.limit.value.length > 0) {
+          command.limit = Number(ast.limit.value[0].value);
+        }
+        // If value array is empty, it means no LIMIT was specified, so we don't set a limit
       }
     }
 

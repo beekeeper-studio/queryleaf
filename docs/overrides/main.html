@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block extrahead %}
+{% if page.meta and page.meta.homepage %}
+<script>document.body.classList.add('homepage');</script>
+{% endif %}
+<link rel="stylesheet" href="{{ 'stylesheets/home.css' | url }}">
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+  // Fix for empty hash issue
+  document.addEventListener('DOMContentLoaded', function() {
+    var originalGetElementById = document.getElementById;
+    document.getElementById = function(id) {
+      if (id === '') return null;
+      return originalGetElementById.call(document, id);
+    };
+    
+    // Initialize syntax highlighting for pre-rendered blocks
+    if (typeof hljs !== 'undefined') {
+      document.querySelectorAll('pre code').forEach(function(block) {
+        hljs.highlightElement(block);
+      });
+    }
+    
+    // Hero code tabs functionality
+    var heroCodeTabs = document.querySelectorAll('.hero-code-tab');
+    if (heroCodeTabs.length > 0) {
+      // Sample MongoDB code to show when MongoDB tab is clicked
+      var mongodbCode = `db.collection('users').aggregate([
+  {
+    $lookup: {
+      from: "orders",
+      localField: "_id",
+      foreignField: "userId",
+      as: "orders"
+    }
+  },
+  { $unwind: { path: "$orders", preserveNullAndEmptyArrays: true } },
+  {
+    $match: {
+      'status': 'active',
+      'orders.items.0.price': { $gt: 100 }
+    }
+  },
+  {
+    $group: {
+      _id: "$name",
+      name: { $first: "$name" },
+      order_count: { $sum: 1 }
+    }
+  },
+  { $sort: { order_count: -1 } },
+  { $limit: 5 }
+])`;
+
+      // SQL code is already in the HTML
+      var sqlCode = document.querySelector('.hero-code-content pre code').innerText;
+      
+      heroCodeTabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          // Remove active class from all tabs
+          heroCodeTabs.forEach(function(t) {
+            t.classList.remove('active');
+          });
+          
+          // Add active class to clicked tab
+          this.classList.add('active');
+          
+          // Update code content based on selected tab
+          var codeElement = document.querySelector('.hero-code-content pre code');
+          var preElement = codeElement.parentElement;
+          
+          if (this.innerText === 'MongoDB') {
+            codeElement.textContent = mongodbCode;
+            codeElement.className = 'language-javascript';
+          } else {
+            codeElement.textContent = sqlCode;
+            codeElement.className = 'language-sql';
+          }
+          
+          // Re-trigger syntax highlighting if MkDocs Material's hljs is available
+          if (typeof hljs !== 'undefined') {
+            hljs.highlightElement(codeElement);
+          }
+        });
+      });
+    }
+  });
+</script>
+{% endblock %}

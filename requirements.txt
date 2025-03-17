@@ -1,0 +1,5 @@
+mkdocs>=1.4.3
+mkdocs-material>=9.1.0
+pymdown-extensions>=10.0
+mkdocs-glightbox>=0.3.0
+mkdocs-minify-plugin>=0.6.0

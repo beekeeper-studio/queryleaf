@@ -64,7 +64,7 @@ export class MongoExecutor implements CommandExecutor {
           if (command.skip) {
             findCursor.skip(command.skip);
           }
-          if (command.limit) {
+          if (command.limit && command.limit > 0) {
             findCursor.limit(command.limit);
           }
           

@@ -1,9 +1,9 @@
 import { Parser as NodeSqlParser } from 'node-sql-parser';
 import { SqlParser, SqlStatement } from './interfaces';
 
-// Custom MySQL mode with extensions to support our syntax needs
+// Custom PostgreSQL mode with extensions to support our syntax needs
 const CUSTOM_DIALECT = {
-  name: 'SquongoMySQL',
+  name: 'QueryLeafPostgreSQL',
   reserved: [
     'SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DROP',
     'TABLE', 'DATABASE', 'VIEW', 'INDEX', 'TRIGGER', 'PROCEDURE', 'FUNCTION'
@@ -29,7 +29,7 @@ export class SqlParserImpl implements SqlParser {
   private parser: NodeSqlParser;
 
   constructor(options?: { database?: string }) {
-    // Create standard parser with MySQL mode
+    // Create standard parser with PostgreSQL mode
     this.parser = new NodeSqlParser();
   }
 
@@ -47,9 +47,9 @@ export class SqlParserImpl implements SqlParser {
       const preprocessedSql = this.preprocessArrayIndexes(preprocessedNestedSql);
       console.log('Preprocessed SQL:', preprocessedSql);
       
-      // Parse with MySQL mode but try to handle our custom extensions
+      // Parse with PostgreSQL mode but try to handle our custom extensions
       const ast = this.parser.astify(preprocessedSql, { 
-        database: 'MySQL'
+        database: 'PostgreSQL'
       });
       
       // Process the AST to properly handle nested fields
@@ -68,7 +68,7 @@ export class SqlParserImpl implements SqlParser {
         const fallbackSql = this.aggressivePreprocessing(sql);
         console.log('Fallback SQL for array syntax:', fallbackSql);
         try {
-          const ast = this.parser.astify(fallbackSql, { database: 'MySQL' });
+          const ast = this.parser.astify(fallbackSql, { database: 'PostgreSQL' });
           const processedAst = this.postProcessAst(ast);
           return {
             ast: Array.isArray(processedAst) ? processedAst[0] : processedAst,

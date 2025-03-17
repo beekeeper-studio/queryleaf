@@ -1,12 +1,13 @@
 # QueryLeaf Project TODO List
 
-## Integration Tests to Add
+## Integration Tests 
+We've implemented the following tests:
 
 ### Simple Queries
-- [ ] Test SELECT with multiple column aliases
+- [x] Test SELECT with multiple column aliases (implemented and working)
 - [ ] Test SELECT with arithmetic operations in projections
-- [x] Test SELECT with multiple WHERE conditions connected by OR
-- [ ] Test SELECT with IN operator
+- [x] Test SELECT with multiple WHERE conditions connected by OR (implemented and working)
+- [x] Test SELECT with IN operator (implemented and working)
 - [ ] Test SELECT with NOT IN operator
 - [ ] Test SELECT with NULL/NOT NULL checks
 - [ ] Test SELECT with LIMIT and OFFSET
@@ -15,24 +16,24 @@
 
 ### Nested Field Access
 - [ ] Test querying on deeply nested fields (3+ levels deep)
-- [ ] Test projecting multiple nested fields simultaneously
-- [x] Test filtering with comparisons on nested fields
+- [x] Test projecting multiple nested fields simultaneously (implemented, working with fixes)
+- [x] Test filtering with comparisons on nested fields (implemented, working with fixes)
 - [ ] Test updating nested fields
-- [x] Test nested field access with complex WHERE conditions
+- [x] Test nested field access with complex WHERE conditions (implemented, working with fixes)
 
 ### Array Access
-- [ ] Test querying arrays with multiple indices
-- [x] Test filtering by array element properties at different indices
+- [x] Test querying arrays with multiple indices (implemented, working with fixes)
+- [x] Test filtering by array element properties at different indices (implemented, working with fixes)
 - [ ] Test filtering by multiple array elements simultaneously
 - [ ] Test projecting multiple array elements in one query
 - [ ] Test array access with nested arrays
 - [ ] Test updating array elements
 
 ### GROUP BY
-- [ ] Test GROUP BY with multiple columns
+- [x] Test GROUP BY with multiple columns (implemented, working with fixes)
 - [ ] Test GROUP BY with HAVING clause
 - [ ] Test GROUP BY with multiple aggregation functions
-- [x] Test aggregation functions: AVG, MIN, MAX, COUNT 
+- [x] Test aggregation functions: AVG, MIN, MAX, COUNT (implemented, working with fixes)
 - [ ] Test GROUP BY with ORDER BY on aggregation results
 - [ ] Test GROUP BY with complex expressions
 - [ ] Test GROUP BY with filtering before aggregation

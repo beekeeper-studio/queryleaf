@@ -67,6 +67,10 @@ export class SqlCompilerImpl implements SqlCompiler {
       projection: ast.columns ? this.convertColumns(ast.columns) : undefined,
     };
 
+    // Check if we need to use aggregate pipeline for column aliases
+    const hasColumnAliases = ast.columns && Array.isArray(ast.columns) && 
+                      ast.columns.some((col: any) => col.as);
+    
     // Handle GROUP BY clause
     if (ast.groupby) {
       command.group = this.convertGroupBy(ast.groupby, ast.columns);
@@ -85,6 +89,11 @@ export class SqlCompilerImpl implements SqlCompiler {
       if (!command.pipeline) {
         command.pipeline = this.createAggregatePipeline(command);
       }
+    }
+    
+    // If we have column aliases, we need to use aggregate pipeline with $project
+    if (hasColumnAliases && !command.pipeline) {
+      command.pipeline = this.createAggregatePipeline(command);
     }
 
     if (ast.limit) {
@@ -332,7 +341,12 @@ export class SqlCompilerImpl implements SqlCompiler {
    */
   private convertValue(value: any): any {
     if (typeof value === 'object') {
-      if ('value' in value) {
+      // Handle expression lists (for IN operator)
+      if (value.type === 'expr_list' && Array.isArray(value.value)) {
+        return value.value.map((item: any) => this.convertValue(item));
+      }
+      // Handle single values with value property
+      else if ('value' in value) {
         return value.value;
       }
     }
@@ -361,10 +375,12 @@ export class SqlCompilerImpl implements SqlCompiler {
           // Handle dot notation (nested fields)
           if ('column' in column.expr && column.expr.column) {
             const fieldName = this.processFieldName(column.expr.column);
-            projection[fieldName] = 1;
+            const outputField = column.as || fieldName;
+            projection[outputField] = `$${fieldName}`;
           } else if (column.expr.type === 'column_ref' && column.expr.column) {
             const fieldName = this.processFieldName(column.expr.column);
-            projection[fieldName] = 1;
+            const outputField = column.as || fieldName;
+            projection[outputField] = `$${fieldName}`;
           } else if (column.expr.type === 'binary_expr' && column.expr.operator === '.' && 
                      column.expr.left && column.expr.right) {
             // Handle explicit dot notation like table.column
@@ -374,19 +390,22 @@ export class SqlCompilerImpl implements SqlCompiler {
             }
             if (fieldName && column.expr.right.column) {
               fieldName += '.' + column.expr.right.column;
-              projection[fieldName] = 1;
+              const outputField = column.as || fieldName;
+              projection[outputField] = `$${fieldName}`;
             }
           }
         } else if ('type' in column && column.type === 'column_ref' && column.column) {
           const fieldName = this.processFieldName(column.column);
-          projection[fieldName] = 1;
+          const outputField = column.as || fieldName;
+          projection[outputField] = `$${fieldName}`;
         } else if ('column' in column) {
           const fieldName = this.processFieldName(column.column);
-          projection[fieldName] = 1;
+          const outputField = column.as || fieldName;
+          projection[outputField] = `$${fieldName}`;
         }
       } else if (typeof column === 'string') {
         const fieldName = this.processFieldName(column);
-        projection[fieldName] = 1;
+        projection[fieldName] = `$${fieldName}`;
       }
     });
     
@@ -715,11 +734,44 @@ export class SqlCompilerImpl implements SqlCompiler {
     
     // Add $project if projection is specified
     if (command.projection && Object.keys(command.projection).length > 0) {
-      pipeline.push({ $project: command.projection });
+      const projectionFormat = this.needsAggregationProjection(command.projection)
+        ? this.convertToAggregationProjection(command.projection)
+        : command.projection;
+      pipeline.push({ $project: projectionFormat });
     }
     
     console.log('Generated aggregate pipeline:', JSON.stringify(pipeline, null, 2));
     return pipeline;
+  }
+
+  /**
+   * Check if projection needs to be converted to $project format
+   */
+  private needsAggregationProjection(projection: Record<string, any>): boolean {
+    // Check if any value is a string that starts with $
+    return Object.values(projection).some(
+      value => typeof value === 'string' && value.startsWith('$')
+    );
+  }
+
+  /**
+   * Convert a MongoDB projection to $project format used in aggregation pipeline
+   */
+  private convertToAggregationProjection(projection: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(projection)) {
+      if (typeof value === 'string' && value.startsWith('$')) {
+        // This is a field reference, keep it as is
+        result[key] = value;
+      } else if (value === 1) {
+        // For 1 values, convert to field reference
+        result[key] = `$${key}`;
+      } else {
+        // Otherwise, keep as is
+        result[key] = value;
+      }
+    }
+    return result;
   }
   
   /**

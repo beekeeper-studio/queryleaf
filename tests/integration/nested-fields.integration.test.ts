@@ -14,12 +14,14 @@ describe('Nested Fields Integration Tests', () => {
     // Add test data for nested fields
     const db = testSetup.getDb();
     await db.collection('contact_profiles').deleteMany({});
+    await db.collection('products').deleteMany({});
   });
   
   afterEach(async () => {
     // Clean up test data
     const db = testSetup.getDb();
     await db.collection('contact_profiles').deleteMany({});
+    await db.collection('products').deleteMany({});
   });
 
   test('should return data with nested fields', async () => {
@@ -180,10 +182,92 @@ describe('Nested Fields Integration Tests', () => {
     expect(productNames).toContain('Laptop');
     expect(productNames).toContain('Desktop');
     expect(productNames).not.toContain('Tablet');
+  });
+
+  test('should project multiple nested fields simultaneously', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('products').insertMany([
+      { 
+        name: 'Laptop',
+        details: { 
+          color: 'silver', 
+          dimensions: { length: 14, width: 10, height: 0.7 },
+          specs: { 
+            cpu: 'Intel i7', 
+            ram: '16GB',
+            storage: { type: 'SSD', size: '512GB' },
+            graphics: { type: 'Integrated', model: 'Intel Iris' }
+          } 
+        },
+        pricing: {
+          msrp: 1299,
+          discount: { percentage: 10, amount: 129.9 },
+          final: 1169.1
+        }
+      },
+      { 
+        name: 'Smartphone',
+        details: { 
+          color: 'black', 
+          dimensions: { length: 6, width: 3, height: 0.3 },
+          specs: { 
+            cpu: 'Snapdragon', 
+            ram: '8GB',
+            storage: { type: 'Flash', size: '256GB' },
+            graphics: { type: 'Integrated', model: 'Adreno' }
+          } 
+        },
+        pricing: {
+          msrp: 999,
+          discount: { percentage: 5, amount: 49.95 },
+          final: 949.05
+        }
+      }
+    ]);
     
-    // Clean up products created for this test
-    await db.collection('products').deleteMany({
-      name: { $in: ['Laptop', 'Desktop', 'Tablet'] }
-    });
+    // Act
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `
+      SELECT 
+        name,
+        details.color,
+        details.specs.cpu as processor,
+        details.specs.storage.size as storage_capacity,
+        pricing.msrp,
+        pricing.discount.percentage as discount_percent,
+        pricing.final as final_price
+      FROM products
+    `;
+    
+    const results = await queryLeaf.execute(sql);
+    
+    // Assert
+    expect(results).toHaveLength(2);
+    
+    const laptop = results.find((p: any) => p.name === 'Laptop');
+    const phone = results.find((p: any) => p.name === 'Smartphone');
+    
+    // Check laptop projection
+    expect(laptop.color).toBe('silver');
+    expect(laptop.processor).toBe('Intel i7');
+    expect(laptop.storage_capacity).toBe('512GB');
+    expect(laptop.msrp).toBe(1299);
+    expect(laptop.discount_percent).toBe(10);
+    expect(laptop.final_price).toBe(1169.1);
+    
+    // Check smartphone projection
+    expect(phone.color).toBe('black');
+    expect(phone.processor).toBe('Snapdragon');
+    expect(phone.storage_capacity).toBe('256GB');
+    expect(phone.msrp).toBe(999);
+    expect(phone.discount_percent).toBe(5);
+    expect(phone.final_price).toBe(949.05);
+    
+    // Verify we don't have the full objects exposed
+    expect(laptop.details).toBeUndefined();
+    expect(laptop.pricing).toBeUndefined();
+    expect(phone.details).toBeUndefined();
+    expect(phone.pricing).toBeUndefined();
   });
 });

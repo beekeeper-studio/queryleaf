@@ -1,5 +1,5 @@
 import { MongoTestContainer, loadFixtures, testUsers, testProducts, testOrders } from '../utils/mongo-container';
-import { createSquongo } from '../../index';
+import { createQueryLeaf } from '../../index';
 import { Db } from 'mongodb';
 
 /**
@@ -7,7 +7,7 @@ import { Db } from 'mongodb';
  */
 export class IntegrationTestSetup {
   public mongoContainer: MongoTestContainer;
-  public TEST_DB = 'squongo_test';
+  public TEST_DB = 'queryleaf_test';
   public connectionString: string = '';
   
   constructor() {
@@ -43,10 +43,10 @@ export class IntegrationTestSetup {
   }
   
   /**
-   * Create a new Squongo instance
+   * Create a new QueryLeaf instance
    */
   getSquongo() {
-    return createSquongo(this.connectionString, this.TEST_DB);
+    return createQueryLeaf(this.connectionString, this.TEST_DB);
   }
 }
 

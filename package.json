@@ -1,7 +1,7 @@
 {
-  "name": "squongo",
+  "name": "queryleaf",
   "version": "0.1.0",
-  "description": "SQL to MongoDB command compiler",
+  "description": "SQL to MongoDB query translator",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -21,6 +21,14 @@
   ],
   "author": "",
   "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beekeeper-studio/queryleaf.git"
+  },
+  "bugs": {
+    "url": "https://github.com/beekeeper-studio/queryleaf/issues"
+  },
+  "homepage": "https://github.com/beekeeper-studio/queryleaf#readme",
   "dependencies": {
     "mongodb": "^6.14.2",
     "node-sql-parser": "^4.11.0"

@@ -1,21 +1,21 @@
-import { createSquongo } from '../index';
+import { createQueryLeaf } from '../index';
 
 /**
- * Example showing basic usage of Squongo
+ * Example showing basic usage of QueryLeaf
  */
 async function main() {
   // Connection info for MongoDB
   const connectionString = 'mongodb://localhost:27017';
   const dbName = 'example';
   
-  // Create a Squongo instance
-  const squongo = createSquongo(connectionString, dbName);
+  // Create a QueryLeaf instance
+  const queryLeaf = createQueryLeaf(connectionString, dbName);
   
   try {
     // Setup sample data with nested structures and arrays
     console.log('\nSetting up sample data with nested structures and arrays...');
     
-    await squongo.execute(`
+    await queryLeaf.execute(`
       INSERT INTO users (_id, name, age, email, active, address) VALUES 
       ('101', 'Nested User', 30, 'nested@example.com', true, {
         "street": "123 Main St",
@@ -25,7 +25,7 @@ async function main() {
       })
     `);
     
-    await squongo.execute(`
+    await queryLeaf.execute(`
       INSERT INTO orders (_id, userId, items, total) VALUES 
       ('201', '101', [
         { "id": "item1", "name": "Laptop", "price": 1200 },
@@ -89,7 +89,7 @@ async function main() {
     for (const sql of queries) {
       console.log(`\nExecuting SQL: ${sql}`);
       try {
-        const result = await squongo.execute(sql);
+        const result = await queryLeaf.execute(sql);
         console.log('Result:', JSON.stringify(result, null, 2));
       } catch (error) {
         console.error('Error:', error instanceof Error ? error.message : String(error));
@@ -97,7 +97,7 @@ async function main() {
     }
   } finally {
     // Close the MongoDB connection when done
-    await squongo.close();
+    await queryLeaf.close();
   }
 }
 

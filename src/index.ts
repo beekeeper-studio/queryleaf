@@ -4,22 +4,22 @@ import {
   SqlParser, 
   SqlCompiler, 
   CommandExecutor,
-  Squongo
+  Squongo as QueryLeaf
 } from './interfaces';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';
 import { MongoExecutor } from './executor';
 
 /**
- * Squongo implementation
+ * QueryLeaf implementation
  */
-class SquongoImpl implements Squongo {
+class QueryLeafImpl implements QueryLeaf {
   private parser: SqlParser;
   private compiler: SqlCompiler;
   private executor: CommandExecutor;
 
   /**
-   * Create a new Squongo instance
+   * Create a new QueryLeaf instance
    * @param parser SQL parser
    * @param compiler SQL compiler
    * @param executor Command executor
@@ -76,17 +76,29 @@ class SquongoImpl implements Squongo {
 }
 
 /**
- * Create a new Squongo instance
+ * Create a new QueryLeaf instance
  * @param connectionString MongoDB connection string
  * @param dbName Database name
- * @returns Squongo instance
+ * @returns QueryLeaf instance
  */
-export function createSquongo(connectionString: string, dbName: string): Squongo {
+export function createQueryLeaf(connectionString: string, dbName: string): QueryLeaf {
   const parser = new SqlParserImpl();
   const compiler = new SqlCompilerImpl();
   const executor = new MongoExecutor(connectionString, dbName);
   
-  return new SquongoImpl(parser, compiler, executor);
+  return new QueryLeafImpl(parser, compiler, executor);
+}
+
+/**
+ * Create a new Squongo instance - alias for createQueryLeaf for backwards compatibility
+ * @deprecated Use createQueryLeaf instead
+ * @param connectionString MongoDB connection string
+ * @param dbName Database name
+ * @returns QueryLeaf instance
+ */
+export function createSquongo(connectionString: string, dbName: string): QueryLeaf {
+  console.warn("Warning: createSquongo is deprecated, use createQueryLeaf instead");
+  return createQueryLeaf(connectionString, dbName);
 }
 
 // Export interfaces and implementation classes
@@ -96,11 +108,12 @@ export {
   SqlParser,
   SqlCompiler,
   CommandExecutor,
-  Squongo,
+  QueryLeaf,
+  Squongo, // For backwards compatibility
   SqlParserImpl,
   SqlCompilerImpl,
   MongoExecutor,
-  SquongoImpl
+  QueryLeafImpl
 };
 
 // Re-export interfaces

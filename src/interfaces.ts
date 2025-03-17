@@ -107,7 +107,7 @@ export interface CommandExecutor {
 }
 
 /**
- * Main Squongo interface
+ * Main QueryLeaf interface
  */
 export interface Squongo {
   execute(sql: string): Promise<any>;

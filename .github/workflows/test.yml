@@ -1,0 +1,48 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+        # See supported Node.js versions at https://nodejs.org/en/about/releases/
+    
+    services:
+      # We don't actually need this service since we use testcontainers
+      # but having it here ensures Docker is available for testcontainers
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests
+      run: npm test
+      env:
+        # This ensures testcontainers can find Docker
+        TESTCONTAINERS_HOST_OVERRIDE: "localhost"
+      
+    - name: TypeCheck
+      run: npm run typecheck
+      
+    - name: Build package
+      run: npm run build

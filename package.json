@@ -9,6 +9,7 @@
     "build": "npm run clean && tsc",
     "test": "jest",
     "test:integration": "jest src/__tests__/integration.integration.test.ts --runInBand",
+    "typecheck": "tsc --noEmit",
     "dev": "ts-node src/index.ts",
     "example": "ts-node src/examples/basic-usage.ts"
   },

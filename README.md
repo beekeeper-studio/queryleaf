@@ -117,6 +117,21 @@ These tests will:
 4. Verify the results
 5. Clean up the container when done
 
+### Continuous Integration
+
+This project uses GitHub Actions for continuous integration. The CI workflow automatically runs on:
+- All pushes to the `main` branch
+- All pull requests targeting the `main` branch
+
+The CI workflow:
+1. Sets up Node.js (versions 16.x, 18.x, and 20.x)
+2. Installs dependencies
+3. Runs all tests (including integration tests with MongoDB in a Docker container)
+4. Performs type checking
+5. Builds the package
+
+You can see the workflow configuration in `.github/workflows/test.yml`.
+
 ## License
 
 AGPL-3.0

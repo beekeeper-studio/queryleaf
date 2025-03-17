@@ -1,9 +1,8 @@
 Code in this project is Copyright Beekeeper Studio, Inc.
 QueryLeaf is dual licensed 
-1. AGPL
-2. Commercial
+1. AGPL (Below)
+2. Commercial - See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)
 
-See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) for details of the commercial license.
 GNU Affero General Public License
 =================================
 

@@ -1,6 +1,10 @@
-# QueryLeaf
+<p align="center">
+  <img src="queryleaf-logo.svg" alt="QueryLeaf Logo" width="150" height="150">
+</p>
 
-SQL to MongoDB query translator for NodeJS.
+<h1 align="center">QueryLeaf</h1>
+
+<p align="center">SQL to MongoDB query translator for NodeJS</p>
 
 ## Overview
 

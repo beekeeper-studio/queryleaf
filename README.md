@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo-transparent-bg-green-shape.png" width="100" height="100" alt="QueryLeaf Logo">
+</p>
+
 <h1 align="center">QueryLeaf</h1>
 
 <p align="center">SQL to MongoDB query translator for NodeJS</p>

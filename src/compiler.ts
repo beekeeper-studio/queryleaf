@@ -376,11 +376,25 @@ export class SqlCompilerImpl implements SqlCompiler {
           if ('column' in column.expr && column.expr.column) {
             const fieldName = this.processFieldName(column.expr.column);
             const outputField = column.as || fieldName;
-            projection[outputField] = `$${fieldName}`;
+            // For find queries, MongoDB projection uses 1
+            projection[fieldName] = 1;
+            
+            // For nested fields, also include the parent field
+            if (fieldName.includes('.')) {
+              const parentField = fieldName.split('.')[0];
+              projection[parentField] = 1;
+            }
           } else if (column.expr.type === 'column_ref' && column.expr.column) {
             const fieldName = this.processFieldName(column.expr.column);
             const outputField = column.as || fieldName;
-            projection[outputField] = `$${fieldName}`;
+            // For find queries, MongoDB projection uses 1
+            projection[fieldName] = 1;
+            
+            // For nested fields, also include the parent field
+            if (fieldName.includes('.')) {
+              const parentField = fieldName.split('.')[0];
+              projection[parentField] = 1;
+            }
           } else if (column.expr.type === 'binary_expr' && column.expr.operator === '.' && 
                      column.expr.left && column.expr.right) {
             // Handle explicit dot notation like table.column
@@ -391,21 +405,47 @@ export class SqlCompilerImpl implements SqlCompiler {
             if (fieldName && column.expr.right.column) {
               fieldName += '.' + column.expr.right.column;
               const outputField = column.as || fieldName;
-              projection[outputField] = `$${fieldName}`;
+              // For find queries, MongoDB projection uses 1
+              projection[fieldName] = 1;
+              
+              // Also include the parent field
+              const parentField = fieldName.split('.')[0];
+              projection[parentField] = 1;
             }
           }
         } else if ('type' in column && column.type === 'column_ref' && column.column) {
           const fieldName = this.processFieldName(column.column);
           const outputField = column.as || fieldName;
-          projection[outputField] = `$${fieldName}`;
+          // For find queries, MongoDB projection uses 1
+          projection[fieldName] = 1;
+          
+          // For nested fields, also include the parent field
+          if (fieldName.includes('.')) {
+            const parentField = fieldName.split('.')[0];
+            projection[parentField] = 1;
+          }
         } else if ('column' in column) {
           const fieldName = this.processFieldName(column.column);
           const outputField = column.as || fieldName;
-          projection[outputField] = `$${fieldName}`;
+          // For find queries, MongoDB projection uses 1
+          projection[fieldName] = 1;
+          
+          // For nested fields, also include the parent field
+          if (fieldName.includes('.')) {
+            const parentField = fieldName.split('.')[0];
+            projection[parentField] = 1;
+          }
         }
       } else if (typeof column === 'string') {
         const fieldName = this.processFieldName(column);
-        projection[fieldName] = `$${fieldName}`;
+        // For find queries, MongoDB projection uses 1
+        projection[fieldName] = 1;
+        
+        // For nested fields, also include the parent field
+        if (fieldName.includes('.')) {
+          const parentField = fieldName.split('.')[0];
+          projection[parentField] = 1;
+        }
       }
     });
     
@@ -764,8 +804,8 @@ export class SqlCompilerImpl implements SqlCompiler {
         // This is a field reference, keep it as is
         result[key] = value;
       } else if (value === 1) {
-        // For 1 values, convert to field reference
-        result[key] = `$${key}`;
+        // For 1 values, keep as 1 for MongoDB's $project stage
+        result[key] = 1;
       } else {
         // Otherwise, keep as is
         result[key] = value;

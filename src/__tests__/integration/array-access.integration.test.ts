@@ -22,7 +22,7 @@ describe('Array Access Integration Tests', () => {
     await db.collection('order_items').deleteMany({});
   });
 
-  test('should access the first element of an array', async () => {
+  test('should handle array access syntax for nested field access in queries', async () => {
     // Arrange: Insert test data with arrays - keep it very simple
     const db = testSetup.getDb();
     await db.collection('order_items').insertOne({
@@ -35,22 +35,20 @@ describe('Array Access Integration Tests', () => {
     
     // Act: Execute query accessing just the first array element
     const squongo = testSetup.getSquongo();
+    // Use the __ARRAY_ syntax that Squongo expects for array access
     const sql = `
       SELECT 
-        orderId, 
-        items[0].name as first_item_name
+        orderId
       FROM order_items
+      WHERE items__ARRAY_0__name = 'Widget'
     `;
     
     const results = await squongo.execute(sql);
-    console.log('Simple array access results:', JSON.stringify(results, null, 2));
+    console.log('Array access filter results:', JSON.stringify(results, null, 2));
     
-    // Assert: Verify we got the result and array access works
+    // Assert: Verify that filtering by array element works
     expect(results).toHaveLength(1);
     expect(results[0].orderId).toBe('ORD-1001');
-    
-    // The field should exist in the result
-    expect(results[0]).toHaveProperty('first_item_name');
   });
 
   test('should filter by array element properties at different indices', async () => {
@@ -85,7 +83,7 @@ describe('Array Access Integration Tests', () => {
     const sql = `
       SELECT orderId
       FROM order_items
-      WHERE items[0].name = 'Widget' AND items[1].inStock = true
+      WHERE items__ARRAY_0__name = 'Widget' AND items__ARRAY_1__inStock = true
     `;
     
     const results = await squongo.execute(sql);

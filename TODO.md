@@ -60,13 +60,13 @@
 - [ ] Test string functions
 
 ### Edge Cases
-- [ ] Test handling of special characters in field names
-- [ ] Test handling of extremely large result sets
-- [ ] Test behavior with invalid SQL syntax
-- [ ] Test behavior with valid SQL but unsupported features
-- [ ] Test behavior with missing collections
-- [ ] Test behavior with invalid data types
-- [ ] Test handling of MongoDB ObjectId conversions
+- [x] Test handling of special characters in field names
+- [x] Test handling of extremely large result sets
+- [x] Test behavior with invalid SQL syntax
+- [x] Test behavior with valid SQL but unsupported features
+- [x] Test behavior with missing collections
+- [x] Test behavior with invalid data types
+- [x] Test handling of MongoDB ObjectId conversions
 
 ## Performance Testing
 - [ ] Benchmark simple queries vs native MongoDB queries

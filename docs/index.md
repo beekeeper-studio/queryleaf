@@ -1,21 +1,21 @@
 ---
 template: home.html
 homepage: true
-title: QueryLeaf - SQL for MongoDB | Write PostgreSQL, Run MongoDB
+title: SQL for MongoDB that just works | QueryLeaf
 ---
 
 <div class="features-section">
   <div class="container">
     <div class="section-title">
       <h2>Why QueryLeaf?</h2>
-      <p>Write in PostgreSQL, run on MongoDB with zero translation hassle</p>
+      <p>Write in SQL, run on MongoDB with zero translation hassle</p>
     </div>
     
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">🔄</div>
         <h3>Seamless SQL Translation</h3>
-        <p>QueryLeaf is a PostgreSQL-compatible SQL layer for MongoDB that lets your team use familiar SQL without compromising on MongoDB's power.</p>
+        <p>QueryLeaf is a PostgreSQL dialect SQL layer for MongoDB that lets your team use familiar SQL without compromising on MongoDB's power.</p>
       </div>
       
       <div class="feature-card">
@@ -36,7 +36,7 @@ title: QueryLeaf - SQL for MongoDB | Write PostgreSQL, Run MongoDB
 <div class="code-sample-section">
   <div class="container">
     <div class="section-title">
-      <h2>PostgreSQL Queries for MongoDB Documents</h2>
+      <h2>SQL Queries for MongoDB Documents</h2>
       <p>Write familiar PostgreSQL syntax while QueryLeaf automatically handles nested fields, array elements, and MongoDB ObjectIDs</p>
     </div>
     

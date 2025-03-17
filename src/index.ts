@@ -3,32 +3,31 @@ import {
   Command, 
   SqlParser, 
   SqlCompiler, 
-  CommandExecutor,
-  QueryLeaf,
-  Squongo
+  CommandExecutor 
 } from './interfaces';
+import { MongoClient } from 'mongodb';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';
 import { MongoExecutor } from './executor';
+import { DummyMongoClient } from './executor/dummy-client';
 
 /**
- * QueryLeaf implementation
+ * QueryLeaf: SQL to MongoDB query translator
  */
-class QueryLeafImpl implements QueryLeaf {
+export class QueryLeaf {
   private parser: SqlParser;
   private compiler: SqlCompiler;
   private executor: CommandExecutor;
 
   /**
-   * Create a new QueryLeaf instance
-   * @param parser SQL parser
-   * @param compiler SQL compiler
-   * @param executor Command executor
+   * Create a new QueryLeaf instance with your MongoDB client
+   * @param client Your MongoDB client
+   * @param dbName Database name
    */
-  constructor(parser: SqlParser, compiler: SqlCompiler, executor: CommandExecutor) {
-    this.parser = parser;
-    this.compiler = compiler;
-    this.executor = executor;
+  constructor(client: MongoClient, dbName: string) {
+    this.parser = new SqlParserImpl();
+    this.compiler = new SqlCompilerImpl();
+    this.executor = new MongoExecutor(client, dbName);
   }
 
   /**
@@ -69,37 +68,26 @@ class QueryLeafImpl implements QueryLeaf {
   }
   
   /**
-   * Close the MongoDB connection
+   * No-op method for backward compatibility
+   * QueryLeaf no longer manages MongoDB connections
    */
   async close(): Promise<void> {
-    await this.executor.close();
+    // No-op - MongoDB client is managed by the user
   }
 }
 
 /**
- * Create a new QueryLeaf instance
- * @param connectionString MongoDB connection string
- * @param dbName Database name
- * @returns QueryLeaf instance
+ * Create a QueryLeaf instance with a dummy client for testing
+ * No actual MongoDB connection is made
  */
-export function createQueryLeaf(connectionString: string, dbName: string): QueryLeaf {
-  const parser = new SqlParserImpl();
-  const compiler = new SqlCompilerImpl();
-  const executor = new MongoExecutor(connectionString, dbName);
-  
-  return new QueryLeafImpl(parser, compiler, executor);
-}
-
-/**
- * Create a new Squongo instance - alias for createQueryLeaf for backwards compatibility
- * @deprecated Use createQueryLeaf instead
- * @param connectionString MongoDB connection string
- * @param dbName Database name
- * @returns QueryLeaf instance
- */
-export function createSquongo(connectionString: string, dbName: string): QueryLeaf {
-  console.warn("Warning: createSquongo is deprecated, use createQueryLeaf instead");
-  return createQueryLeaf(connectionString, dbName);
+export class DummyQueryLeaf extends QueryLeaf {
+  /**
+   * Create a new DummyQueryLeaf instance
+   * @param dbName Database name
+   */
+  constructor(dbName: string) {
+    super(new DummyMongoClient(), dbName);
+  }
 }
 
 // Export interfaces and implementation classes
@@ -109,12 +97,10 @@ export {
   SqlParser,
   SqlCompiler,
   CommandExecutor,
-  QueryLeaf,
-  Squongo, // For backwards compatibility
   SqlParserImpl,
   SqlCompilerImpl,
   MongoExecutor,
-  QueryLeafImpl
+  DummyMongoClient
 };
 
 // Re-export interfaces

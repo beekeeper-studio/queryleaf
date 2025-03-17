@@ -1,15 +1,20 @@
-import { createQueryLeaf } from '../index';
+import { QueryLeaf } from '../index';
+import { MongoClient } from 'mongodb';
 
 /**
- * Example showing basic usage of QueryLeaf
+ * Example showing how to use QueryLeaf with an existing MongoDB client
  */
 async function main() {
-  // Connection info for MongoDB
+  // Your existing MongoDB connection
   const connectionString = 'mongodb://localhost:27017';
   const dbName = 'example';
   
-  // Create a QueryLeaf instance
-  const queryLeaf = createQueryLeaf(connectionString, dbName);
+  // In a real application, you would already have a MongoDB client
+  const mongoClient = new MongoClient(connectionString);
+  await mongoClient.connect();
+  
+  // Create a QueryLeaf instance with your MongoDB client
+  const queryLeaf = new QueryLeaf(mongoClient, dbName);
   
   try {
     // Setup sample data with nested structures and arrays
@@ -96,8 +101,9 @@ async function main() {
       }
     }
   } finally {
-    // Close the MongoDB connection when done
-    await queryLeaf.close();
+    // Close the MongoDB client that we created
+    // QueryLeaf does not manage MongoDB connections
+    await mongoClient.close();
   }
 }
 

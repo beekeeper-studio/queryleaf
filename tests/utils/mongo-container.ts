@@ -39,6 +39,16 @@ export class MongoTestContainer {
   }
   
   /**
+   * Get the MongoDB client
+   */
+  getClient(): MongoClient {
+    if (!this.client) {
+      throw new Error('MongoDB container not started');
+    }
+    return this.client;
+  }
+  
+  /**
    * Get a MongoDB database
    * @param dbName Database name
    */

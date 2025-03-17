@@ -8,7 +8,9 @@
     "clean": "rm -rf dist",
     "build": "npm run clean && tsc",
     "test": "jest",
-    "test:integration": "jest src/__tests__/integration.integration.test.ts --runInBand",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration --runInBand",
+    "test:all": "npm run test:unit && npm run test:integration",
     "typecheck": "tsc --noEmit",
     "dev": "ts-node src/index.ts",
     "example": "ts-node src/examples/basic-usage.ts"

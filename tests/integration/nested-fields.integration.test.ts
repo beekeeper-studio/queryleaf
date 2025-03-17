@@ -50,14 +50,14 @@ describe('Nested Fields Integration Tests', () => {
     });
     
     // Act: Execute a simpler query with a star projection to verify the data exists
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
       SELECT *
       FROM contact_profiles
       WHERE name = 'John Smith'
     `;
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     console.log('Nested fields results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify we can access the data
@@ -101,7 +101,7 @@ describe('Nested Fields Integration Tests', () => {
     ]);
     
     // Act: Execute query filtering on a nested field
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     
     // Use direct MongoDB-style dot notation for nested fields
     const sql = `
@@ -118,7 +118,7 @@ describe('Nested Fields Integration Tests', () => {
       .toArray();
     console.log('Direct MongoDB query results:', JSON.stringify(directQueryResults, null, 2));
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     console.log('Nested filter results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only Bostonians are returned
@@ -163,7 +163,7 @@ describe('Nested Fields Integration Tests', () => {
     ]);
     
     // Act: Execute query with comparison on nested fields
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
       SELECT name
       FROM products
@@ -171,7 +171,7 @@ describe('Nested Fields Integration Tests', () => {
       AND details.price < 1400
     `;
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     console.log('Nested comparison results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only products matching nested criteria are returned

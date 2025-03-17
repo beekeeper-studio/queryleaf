@@ -1,21 +1,23 @@
-import { SqlParserImpl } from '../parser';
-import { SqlCompilerImpl } from '../compiler';
-import { createSquongo, QueryLeafImpl as SquongoImpl } from '../index';
+import { SqlParserImpl } from '../../src/parser';
+import { SqlCompilerImpl } from '../../src/compiler';
+import { QueryLeaf, DummyQueryLeaf } from '../../src/index';
+import { MongoClient } from 'mongodb';
 
 // Mock the MongoDB executor to avoid actual database connections during tests
-jest.mock('../executor', () => {
+jest.mock('../../src/executor', () => {
   return {
     MongoExecutor: jest.fn().mockImplementation(() => {
       return {
-        connect: jest.fn().mockResolvedValue(undefined),
-        close: jest.fn().mockResolvedValue(undefined),
         execute: jest.fn().mockResolvedValue([{ id: 1, name: 'Test User', age: 25 }])
       };
     })
   };
 });
 
-describe('Squongo', () => {
+// Mock MongoClient
+const mockMongoClient = {} as MongoClient;
+
+describe('QueryLeaf', () => {
   describe('SqlParserImpl', () => {
     const parser = new SqlParserImpl();
 
@@ -272,10 +274,10 @@ describe('Squongo', () => {
     });
   });
 
-  describe('QueryLeafImpl', () => {
+  describe('QueryLeaf', () => {
     test('should execute a SQL query', async () => {
-      const squongo = createSquongo('mongodb://localhost:27017', 'test');
-      const result = await squongo.execute('SELECT * FROM users WHERE age > 18');
+      const queryLeaf = new QueryLeaf(mockMongoClient, 'test');
+      const result = await queryLeaf.execute('SELECT * FROM users WHERE age > 18');
       
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);

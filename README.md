@@ -34,42 +34,63 @@ npm install queryleaf
 
 ## Usage
 
+QueryLeaf takes your existing MongoDB client. It never creates or manages MongoDB connections on its own.
+
 ```typescript
-import { createQueryLeaf } from 'queryleaf';
+import { QueryLeaf } from 'queryleaf';
+import { MongoClient } from 'mongodb';
 
-async function main() {
-  // Create a QueryLeaf instance
-  const queryLeaf = createQueryLeaf('mongodb://localhost:27017', 'mydatabase');
-  
-  try {
-    // Basic SQL query
-    const basicResults = await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
-    console.log('Basic query results:', basicResults);
-    
-    // Query with nested fields
-    const nestedResults = await queryLeaf.execute('SELECT name, address.city, address.zip FROM users WHERE address.country = "USA"');
-    console.log('Nested fields query results:', nestedResults);
-    
-    // Query with array access
-    const arrayResults = await queryLeaf.execute('SELECT order_id, items[0].name, items[0].price FROM orders WHERE items[0].price > 100');
-    console.log('Array access query results:', arrayResults);
-  } catch (error) {
-    console.error('Error executing query:', error);
-  } finally {
-    // Close the MongoDB connection when done
-    await queryLeaf.close();
-  }
-}
+// Your existing MongoDB client
+const mongoClient = new MongoClient('mongodb://localhost:27017');
+await mongoClient.connect();
 
-main().catch(console.error);
+// Create QueryLeaf with your MongoDB client
+const queryLeaf = new QueryLeaf(mongoClient, 'mydatabase');
+
+// Execute SQL queries against your MongoDB database
+const results = await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
+console.log(results);
+
+// When you're done, close your MongoDB client
+// (QueryLeaf never manages MongoDB connections)
+await mongoClient.close();
+```
+
+### Testing with DummyQueryLeaf
+
+For testing or debugging without a real database, use DummyQueryLeaf:
+
+```typescript
+import { DummyQueryLeaf } from 'queryleaf';
+
+// Create a DummyQueryLeaf instance for testing
+const queryLeaf = new DummyQueryLeaf('mydatabase');
+
+// Operations will be logged to console but not executed
+await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
+// [DUMMY MongoDB] FIND in mydatabase.users with filter: { "age": { "$gt": 21 } }
+// [DUMMY MongoDB] Executing find on users
 ```
 
 ### Examples
 
-The repository includes a complete example in `src/examples/basic-usage.ts`. You can run it with:
+The repository includes several examples:
+
+- `src/examples/existing-client-demo.ts` - Shows how to use QueryLeaf in a real application
+- `src/examples/basic-usage.ts` - Demonstrates basic usage with an existing MongoDB client
+- `src/examples/dummy-client-demo.ts` - Shows how to use DummyQueryLeaf for testing
+
+You can run the examples with:
 
 ```bash
+# Main application example
+ts-node src/examples/existing-client-demo.ts
+
+# Basic usage example
 npm run example
+
+# Dummy client example
+ts-node src/examples/dummy-client-demo.ts
 ```
 
 This example demonstrates:
@@ -138,4 +159,9 @@ You can see the workflow configuration in `.github/workflows/test.yml`.
 
 ## License
 
-AGPL-3.0
+QueryLeaf is dual-licensed:
+
+- [AGPL-3.0](LICENSE) for open source use
+- [Commercial license](COMMERCIAL_LICENSE.md) for commercial use with embedding
+
+For commercial licensing options and pricing, please visit [queryleaf.com](https://queryleaf.com) or contact us at info@queryleaf.com.

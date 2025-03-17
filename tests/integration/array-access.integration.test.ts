@@ -34,7 +34,7 @@ describe('Array Access Integration Tests', () => {
     });
     
     // Act: Execute query accessing just the first array element
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     // Use the __ARRAY_ syntax that Squongo expects for array access
     const sql = `
       SELECT 
@@ -43,7 +43,7 @@ describe('Array Access Integration Tests', () => {
       WHERE items__ARRAY_0__name = 'Widget'
     `;
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     console.log('Array access filter results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify that filtering by array element works
@@ -79,14 +79,14 @@ describe('Array Access Integration Tests', () => {
     ]);
     
     // Act: Execute query filtering on different array indices
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
       SELECT orderId
       FROM order_items
       WHERE items__ARRAY_0__name = 'Widget' AND items__ARRAY_1__inStock = true
     `;
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     console.log('Array indices filtering results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only the order with Widget as first item and inStock=true for second item

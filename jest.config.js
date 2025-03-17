@@ -1,11 +1,11 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/tests'],
   transform: {
     '^.+\\.tsx?$': 'ts-jest'
   },
-  testMatch: ['**/__tests__/**/*.test.ts'],
+  testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.test.js'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   testTimeout: 30000, // 30 seconds timeout for tests involving containers
   forceExit: true, // Force Jest to exit after tests complete

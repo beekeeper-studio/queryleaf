@@ -8,11 +8,11 @@ describe('Edge Cases Integration Tests', () => {
   
   afterAll(async () => {
     // Make sure to close any outstanding connections
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     
     // Clean up any resources that squongo might be using
-    if (typeof squongo.close === 'function') {
-      await squongo.close();
+    if (typeof queryLeaf.close === 'function') {
+      await queryLeaf.close();
     }
     
     // Clean up test setup resources
@@ -44,12 +44,12 @@ describe('Edge Cases Integration Tests', () => {
     ]);
     
     // Act
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     // Since SQL parsers often have issues with special characters, we'll use identifiers that are more likely
     // to be supported by most SQL parsers
     const sql = 'SELECT name, field_with_underscores FROM edge_test WHERE field_with_underscores = "value1"';
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     
     // Assert
     expect(results).toHaveLength(1);
@@ -59,30 +59,30 @@ describe('Edge Cases Integration Tests', () => {
 
   test('should gracefully handle invalid SQL syntax', async () => {
     // Arrange
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     const invalidSql = 'SELECT FROM users WHERE;'; // Missing column and invalid WHERE clause
     
     // Act & Assert
-    await expect(squongo.execute(invalidSql)).rejects.toThrow();
+    await expect(queryLeaf.execute(invalidSql)).rejects.toThrow();
   });
 
   test('should gracefully handle valid SQL but unsupported features', async () => {
     // Arrange
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     // SQL with PIVOT which is not widely supported in most SQL implementations
     const unsupportedSql = 'SELECT * FROM (SELECT category, price FROM products) PIVOT (SUM(price) FOR category IN ("Electronics", "Furniture"))';
     
     // Act & Assert
-    await expect(squongo.execute(unsupportedSql)).rejects.toThrow();
+    await expect(queryLeaf.execute(unsupportedSql)).rejects.toThrow();
   });
 
   test('should handle behavior with missing collections', async () => {
     // Arrange
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     const sql = 'SELECT * FROM nonexistent_collection';
     
     // Act
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     
     // Assert - should return empty array rather than throwing an error
     expect(Array.isArray(results)).toBe(true);
@@ -98,11 +98,11 @@ describe('Edge Cases Integration Tests', () => {
     ]);
     
     // Act
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     // Try to do numerical comparison on non-numeric data
     const sql = 'SELECT name FROM edge_test WHERE value > 100';
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     
     // Assert - should only find the numeric value that's valid for comparison
     expect(results).toHaveLength(1);
@@ -119,11 +119,11 @@ describe('Edge Cases Integration Tests', () => {
     });
     
     // Act
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     // Use the string representation of ObjectId in SQL
     const sql = `SELECT name FROM edge_test WHERE _id = '${objectId.toString()}'`;
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     
     // Assert
     expect(results).toHaveLength(1);
@@ -142,10 +142,10 @@ describe('Edge Cases Integration Tests', () => {
     await db.collection('edge_test').insertMany(largeDataset);
     
     // Act
-    const squongo = testSetup.getSquongo();
+    const queryLeaf = testSetup.getQueryLeaf();
     const sql = 'SELECT * FROM edge_test';
     
-    const results = await squongo.execute(sql);
+    const results = await queryLeaf.execute(sql);
     
     // Assert
     expect(results).toHaveLength(1000);

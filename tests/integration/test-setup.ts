@@ -1,5 +1,5 @@
 import { MongoTestContainer, loadFixtures, testUsers, testProducts, testOrders } from '../utils/mongo-container';
-import { createQueryLeaf } from '../../index';
+import { QueryLeaf } from '../../src/index';
 import { Db } from 'mongodb';
 
 /**
@@ -8,7 +8,6 @@ import { Db } from 'mongodb';
 export class IntegrationTestSetup {
   public mongoContainer: MongoTestContainer;
   public TEST_DB = 'queryleaf_test';
-  public connectionString: string = '';
   
   constructor() {
     this.mongoContainer = new MongoTestContainer();
@@ -18,7 +17,7 @@ export class IntegrationTestSetup {
    * Initialize the test environment
    */
   async init(): Promise<void> {
-    this.connectionString = await this.mongoContainer.start();
+    await this.mongoContainer.start();
     const db = this.mongoContainer.getDatabase(this.TEST_DB);
     await loadFixtures(db);
   }
@@ -45,8 +44,9 @@ export class IntegrationTestSetup {
   /**
    * Create a new QueryLeaf instance
    */
-  getSquongo() {
-    return createQueryLeaf(this.connectionString, this.TEST_DB);
+  getQueryLeaf() {
+    const client = this.mongoContainer.getClient();
+    return new QueryLeaf(client, this.TEST_DB);
   }
 }
 

@@ -101,13 +101,25 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     if (ast.limit) {
       log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
-      if (typeof ast.limit === 'object' && 'value' in ast.limit && ast.limit.value) {
-        // Standard PostgreSQL LIMIT format
+      if (typeof ast.limit === 'object' && 'value' in ast.limit && !Array.isArray(ast.limit.value)) {
+        // Standard PostgreSQL LIMIT format (without OFFSET)
         command.limit = Number(ast.limit.value);
       } else if (typeof ast.limit === 'object' && 'seperator' in ast.limit && Array.isArray(ast.limit.value)) {
-        // Handle PostgreSQL style LIMIT
+        // Handle PostgreSQL style LIMIT [OFFSET]
         if (ast.limit.value.length > 0) {
-          command.limit = Number(ast.limit.value[0].value);
+          if (ast.limit.seperator === 'offset') {
+            if (ast.limit.value.length === 1) {
+              // Only OFFSET specified (OFFSET X)
+              command.skip = Number(ast.limit.value[0].value);
+            } else if (ast.limit.value.length >= 2) {
+              // Both LIMIT and OFFSET specified (LIMIT X OFFSET Y)
+              command.limit = Number(ast.limit.value[0].value);
+              command.skip = Number(ast.limit.value[1].value);
+            }
+          } else {
+            // Regular LIMIT without OFFSET
+            command.limit = Number(ast.limit.value[0].value);
+          }
         }
         // If value array is empty, it means no LIMIT was specified, so we don't set a limit
       }

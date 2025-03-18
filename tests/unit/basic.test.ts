@@ -107,6 +107,35 @@ describe('QueryLeaf', () => {
       }
     });
     
+    test('should compile a SELECT with OFFSET', () => {
+      const sql = 'SELECT * FROM users OFFSET 10';
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      expect(commands[0].collection).toBe('users');
+      // Check if it's a FindCommand with offset
+      if (commands[0].type === 'FIND') {
+        expect(commands[0].skip).toBe(10);
+      }
+    });
+    
+    test('should compile a SELECT with LIMIT and OFFSET', () => {
+      const sql = 'SELECT * FROM users LIMIT 5 OFFSET 10';
+      const statement = parser.parse(sql);
+      const commands = compiler.compile(statement);
+      
+      expect(commands).toHaveLength(1);
+      expect(commands[0].type).toBe('FIND');
+      expect(commands[0].collection).toBe('users');
+      // Check if it's a FindCommand with limit and offset
+      if (commands[0].type === 'FIND') {
+        expect(commands[0].limit).toBe(5);
+        expect(commands[0].skip).toBe(10);
+      }
+    });
+    
     test('should compile a SELECT with nested fields', () => {
       const sql = 'SELECT address.zip, address FROM shipping_addresses';
       const statement = parser.parse(sql);

@@ -2,6 +2,22 @@
 
 QueryLeaf supports JOIN operations, which allow you to combine data from multiple MongoDB collections. This page explains how to use JOINs in your SQL queries.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| INNER JOIN | ✅ Full | Standard JOIN keyword |
+| LEFT JOIN | ❌ None | Not currently supported |
+| RIGHT JOIN | ❌ None | Not currently supported |
+| FULL OUTER JOIN | ❌ None | Not currently supported |
+| JOIN conditions | ⚠️ Limited | Equal conditions only (ON a.id = b.id) |
+| Multiple JOINs | ✅ Full | Chain multiple tables together |
+| JOIN with WHERE | ✅ Full | Filter joined results |
+| JOIN with GROUP BY | ✅ Full | Aggregate joined data |
+| JOIN with ORDER BY | ✅ Full | Sort joined results |
+| JOIN with LIMIT | ✅ Full | Paginate joined results |
+| Complex JOIN conditions | ❌ None | No support for AND/OR in JOIN conditions |
+
 ## JOIN Syntax
 
 ```sql

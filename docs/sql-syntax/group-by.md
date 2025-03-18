@@ -2,6 +2,23 @@
 
 The GROUP BY clause is used to group documents based on specified fields and perform aggregation operations. This page explains how to use GROUP BY and aggregation functions in QueryLeaf.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| Basic GROUP BY | ✅ Full | Group by single or multiple fields |
+| COUNT(*) | ✅ Full | Count documents in each group |
+| COUNT(field) | ✅ Full | Count non-null values in each group |
+| SUM | ✅ Full | Sum of values in each group |
+| AVG | ✅ Full | Average of values in each group |
+| MIN | ✅ Full | Minimum value in each group |
+| MAX | ✅ Full | Maximum value in each group |
+| Nested field grouping | ✅ Full | Group by embedded document fields |
+| ORDER BY with GROUP BY | ✅ Full | Sort grouped results |
+| HAVING clause | ⚠️ Limited | Limited support for filtering groups |
+| Complex expressions | ⚠️ Limited | Limited support in grouping expressions |
+| Window functions | ❌ None | No support for window functions |
+
 ## GROUP BY Syntax
 
 ```sql

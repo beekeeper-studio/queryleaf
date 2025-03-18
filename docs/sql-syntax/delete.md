@@ -2,6 +2,19 @@
 
 The DELETE statement is used to remove documents from MongoDB collections. This page describes the syntax and features of DELETE operations in QueryLeaf.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| DELETE basic | ✅ Full | Remove documents from collections |
+| WHERE clause | ✅ Full | Standard filtering conditions |
+| Complex conditions | ✅ Full | Supports AND, OR, and nested conditions |
+| Nested field filters | ✅ Full | Filter using dot notation |
+| Array element filters | ✅ Full | Filter using array indexing |
+| Bulk delete | ✅ Full | Delete multiple documents at once |
+| RETURNING clause | ❌ None | Cannot return deleted documents |
+| LIMIT in DELETE | ❌ None | Cannot limit number of deleted documents |
+
 ## Basic Syntax
 
 ```sql

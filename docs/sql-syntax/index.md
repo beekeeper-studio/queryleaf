@@ -6,23 +6,23 @@ QueryLeaf translates PostgreSQL-compatible SQL queries into MongoDB commands, su
 
 ## Supported SQL Operations
 
-QueryLeaf supports the following SQL operations:
+QueryLeaf supports the following SQL statement types:
 
-| Operation | Status | Description |
-|-----------|--------|-------------|
-| SELECT    | ✅ Full | Retrieve documents from collections |
-| INSERT    | ✅ Full | Insert new documents into collections |
-| UPDATE    | ✅ Full | Update existing documents in collections |
-| DELETE    | ✅ Full | Remove documents from collections |
-| JOIN      | ⚠️ Partial | Join collections (currently INNER JOIN only) |
-| GROUP BY  | ✅ Full | Group and aggregate data |
-| ORDER BY  | ✅ Full | Sort results |
-| LIMIT     | ✅ Full | Limit number of results |
-| OFFSET    | ❌ Not Supported | Skip results (use MongoDB skip instead) |
-| DISTINCT  | ❌ Not Supported | Remove duplicates |
-| UNION     | ❌ Not Supported | Combine results from multiple queries |
-| Subqueries| ❌ Not Supported | Nested queries |
-| Views     | ❌ Not Supported | Stored queries |
+| Statement Type | Status | Description |
+|----------------|--------|-------------|
+| SELECT         | ✅ Full | Retrieve documents from collections |
+| INSERT         | ✅ Full | Insert new documents into collections |
+| UPDATE         | ✅ Full | Update existing documents in collections |
+| DELETE         | ✅ Full | Remove documents from collections |
+| CREATE/DROP    | ❌ Not Supported | No schema operations supported |
+| ALTER          | ❌ Not Supported | No schema modifications supported |
+| TRANSACTIONS   | ❌ Not Supported | No multi-statement transactions |
+
+For detailed feature support within each statement type, see the individual pages:
+- [SELECT](select.md): Supports WHERE, GROUP BY, ORDER BY, LIMIT, OFFSET, JOINs
+- [INSERT](insert.md): Supports single and multi-row inserts, nested objects and arrays
+- [UPDATE](update.md): Supports WHERE conditions, nested fields, array elements
+- [DELETE](delete.md): Supports WHERE conditions, nested fields
 
 ## MongoDB-Specific Extensions
 
@@ -43,6 +43,7 @@ FROM collection [alias]
 [HAVING aggregate_conditions]
 [ORDER BY columns [ASC|DESC]]
 [LIMIT count]
+[OFFSET count]
 ```
 
 ## SQL INSERT Syntax
@@ -162,10 +163,9 @@ QueryLeaf has the following limitations:
 2. **Subqueries**: Subqueries are not supported
 3. **Complex Functions**: Limited support for SQL functions
 4. **Data Types**: Limited handling of complex data types
-5. **OFFSET**: Not supported (use MongoDB's native skip functionality instead)
-6. **CASE Statements**: Not yet supported
-7. **Window Functions**: Not supported
-8. **Transactions**: Not supported
+5. **CASE Statements**: Not yet supported
+6. **Window Functions**: Not supported
+7. **Transactions**: Not supported
 
 ## SQL Dialect Information
 
@@ -183,6 +183,7 @@ QueryLeaf uses the PostgreSQL SQL dialect via the node-sql-parser library. All q
 - Complex GROUP BY operations translate to MongoDB aggregation pipelines
 - Queries on non-indexed fields may be slow on large collections
 - Array access operations can be expensive if arrays are large
+- Using OFFSET with large values may be inefficient as MongoDB must still process all skipped documents
 
 ## Next Pages
 

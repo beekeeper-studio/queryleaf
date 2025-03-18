@@ -2,6 +2,21 @@
 
 MongoDB documents can contain arrays, and QueryLeaf provides special syntax for accessing array elements. This page explains how to query and manipulate arrays in your SQL queries.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| SELECT array elements | ✅ Full | Project specific array indices |
+| WHERE with array elements | ✅ Full | Filter based on specific array indices |
+| UPDATE array elements | ✅ Full | Modify specific array elements |
+| INSERT with arrays | ✅ Full | Create documents with array structures |
+| Bracket notation | ✅ Full | Access array elements by index [0], [1], etc. |
+| Nested arrays | ✅ Full | Access arrays within arrays |
+| Arrays with objects | ✅ Full | Access object fields within arrays |
+| Array operators | ❌ None | No $elemMatch, $all, etc. |
+| Array modifiers | ❌ None | No $push, $pull, $addToSet support |
+| Array wildcard | ❌ None | Can't match any element with "items[].name" |
+
 ## Array Access Syntax
 
 In QueryLeaf, you can access array elements using square bracket notation with zero-based indices:

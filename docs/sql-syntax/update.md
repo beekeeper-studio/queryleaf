@@ -2,6 +2,21 @@
 
 The UPDATE statement is used to modify existing documents in MongoDB collections. This page describes the syntax and features of UPDATE operations in QueryLeaf.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| UPDATE basic | ✅ Full | Simple field updates |
+| WHERE clause | ✅ Full | Standard filtering conditions |
+| Multiple fields | ✅ Full | Update multiple fields at once |
+| Nested fields | ✅ Full | Update embedded document fields |
+| Array elements | ✅ Full | Update specific array indexes |
+| NULL values | ✅ Full | Set fields to NULL |
+| Expressions | ⚠️ Limited | Limited support for expressions in SET |
+| Increments | ❌ None | No direct equivalent to `SET x = x + 1` |
+| Array operators | ❌ None | No $push, $pull, $addToSet support |
+| RETURNING clause | ❌ None | Cannot return updated documents |
+
 ## Basic Syntax
 
 ```sql

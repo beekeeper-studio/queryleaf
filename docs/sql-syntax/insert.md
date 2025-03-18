@@ -2,6 +2,19 @@
 
 The INSERT statement is used to add new documents to MongoDB collections. This page describes the syntax and features of INSERT operations in QueryLeaf.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| INSERT basic | ✅ Full | Standard single-document insertion |
+| Multiple rows | ✅ Full | Batch insertions supported |
+| Custom _id | ✅ Full | Specify your own _id value |
+| Nested objects | ✅ Full | Supports full MongoDB document structure |
+| Arrays | ✅ Full | Both simple and complex arrays supported |
+| NULL values | ✅ Full | Explicit NULL values supported |
+| Returning clause | ❌ None | Cannot return inserted documents |
+| Conflict handling | ❌ None | No ON CONFLICT support |
+
 ## Basic Syntax
 
 ```sql

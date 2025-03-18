@@ -2,6 +2,23 @@
 
 The SELECT statement is used to retrieve documents from MongoDB collections. This page describes the syntax and features of SELECT queries in QueryLeaf.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| SELECT columns | ✅ Full | Both `*` and specific columns supported |
+| FROM collection | ✅ Full | Single collection per query |
+| WHERE conditions | ✅ Full | All standard operators supported |
+| GROUP BY | ✅ Full | Supports aggregation functions |
+| ORDER BY | ✅ Full | ASC and DESC supported |
+| LIMIT | ✅ Full | Limits result set size |
+| OFFSET | ✅ Full | Supports pagination |
+| JOINs | ⚠️ Partial | Only INNER JOIN currently supported |
+| Column aliases | ✅ Full | Using AS keyword |
+| Table aliases | ✅ Full | Useful for JOIN statements |
+| Nested fields | ✅ Full | Using dot notation |
+| Array access | ✅ Full | Using bracket notation |
+
 ## Basic Syntax
 
 ```sql
@@ -11,6 +28,7 @@ FROM collection [alias]
 [GROUP BY columns]
 [ORDER BY columns [ASC|DESC]]
 [LIMIT count]
+[OFFSET count]
 ```
 
 ## Examples
@@ -63,7 +81,7 @@ SELECT * FROM products ORDER BY price DESC
 SELECT * FROM users ORDER BY age DESC, name ASC
 ```
 
-### LIMIT Clause
+### LIMIT and OFFSET Clauses
 
 ```sql
 -- Limit to 10 results
@@ -71,6 +89,15 @@ SELECT * FROM products LIMIT 10
 
 -- Limit with ORDER BY
 SELECT * FROM products ORDER BY price DESC LIMIT 5
+
+-- Skip first 10 results
+SELECT * FROM products OFFSET 10
+
+-- Pagination: Get the second page of 10 results
+SELECT * FROM products LIMIT 10 OFFSET 10
+
+-- Pagination with ordering: Get the third page of 5 results sorted by price
+SELECT * FROM products ORDER BY price DESC LIMIT 5 OFFSET 10
 ```
 
 ## Column Aliases
@@ -161,6 +188,7 @@ When you run a SELECT query, QueryLeaf translates it to MongoDB operations:
 | WHERE | Query filter object |
 | ORDER BY | Sort object |
 | LIMIT | limit() method |
+| OFFSET | skip() method |
 | Nested fields | Dot notation fields |
 | Array access | Dot notation with array indices |
 
@@ -173,6 +201,7 @@ FROM users
 WHERE age > 21 AND status = 'active' 
 ORDER BY name ASC 
 LIMIT 10
+OFFSET 5
 ```
 
 MongoDB:
@@ -180,15 +209,17 @@ MongoDB:
 db.collection('users').find(
   { age: { $gt: 21 }, status: 'active' },
   { name: 1, email: 1, 'address.city': 1 }
-).sort({ name: 1 }).limit(10)
+).sort({ name: 1 }).skip(5).limit(10)
 ```
 
 ## Performance Considerations
 
 - Add appropriate MongoDB indexes for fields used in WHERE and ORDER BY clauses
 - Use LIMIT to restrict result set size
+- Use OFFSET in combination with LIMIT for pagination
 - Be aware that sorting (ORDER BY) without an index can be expensive 
 - Queries on nested fields benefit from compound indexes that include the full path
+- Using OFFSET with large values may be inefficient as MongoDB must still process all skipped documents
 
 ## Advanced Usage
 

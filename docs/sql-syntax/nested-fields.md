@@ -2,6 +2,19 @@
 
 MongoDB documents can contain nested fields (embedded documents), and QueryLeaf provides SQL syntax for working with these structures. This page explains how to query, update, and insert data with nested fields.
 
+## Feature Support
+
+| Feature | Support | Notes |
+|---------|---------|-------|
+| SELECT nested fields | ✅ Full | Project specific embedded fields |
+| WHERE with nested fields | ✅ Full | Filter on embedded document fields |
+| UPDATE nested fields | ✅ Full | Modify specific embedded fields |
+| INSERT with nested objects | ✅ Full | Create documents with embedded structures |
+| Multilevel nesting | ✅ Full | Support for deeply nested paths (a.b.c.d) |
+| Nested field indexing | ⚠️ N/A | MongoDB-side feature, not SQL syntax |
+| Nested array operations | ⚠️ Limited | See [Array Access](array-access.md) page |
+| Dot notation in expressions | ⚠️ Limited | Limited support in complex expressions |
+
 ## Nested Field Syntax
 
 In QueryLeaf, you can access nested fields using dot notation:

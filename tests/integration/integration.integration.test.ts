@@ -396,6 +396,51 @@ describe('QueryLeaf Integration Tests', () => {
       expect(limitedResults[0]).toHaveProperty('name');
       expect(limitedResults[1]).toHaveProperty('name');
     });
+    
+    test('should execute a query with OFFSET', async () => {
+      const queryLeaf = getQueryLeaf();
+      const db = mongoContainer.getDatabase(TEST_DB);
+      
+      // First get all users to know how many we have
+      const allUsersSql = 'SELECT * FROM users';
+      const allUsers = await queryLeaf.execute(allUsersSql);
+      log('Total users:', allUsers.length);
+      
+      // Execute SQL with OFFSET
+      const offsetSql = 'SELECT * FROM users OFFSET 2';
+      log('Executing SQL with OFFSET:', offsetSql);
+      const offsetResults = await queryLeaf.execute(offsetSql);
+      
+      // Verify we have the expected number of results
+      expect(offsetResults.length).toBe(allUsers.length - 2);
+      
+      // Verify the offset worked by comparing with the original results
+      expect(offsetResults[0]).toEqual(allUsers[2]);
+    });
+    
+    test('should execute a query with LIMIT and OFFSET', async () => {
+      const queryLeaf = getQueryLeaf();
+      
+      // First get all users ordered by name to have consistent results
+      const allUsersSql = 'SELECT * FROM users ORDER BY name';
+      const allUsers = await queryLeaf.execute(allUsersSql);
+      log('Total ordered users:', allUsers.length);
+      
+      // Make sure we have enough users for this test
+      expect(allUsers.length).toBeGreaterThan(3);
+      
+      // Execute SQL with LIMIT and OFFSET
+      const paginatedSql = 'SELECT * FROM users ORDER BY name LIMIT 2 OFFSET 1';
+      log('Executing SQL with LIMIT and OFFSET:', paginatedSql);
+      const paginatedResults = await queryLeaf.execute(paginatedSql);
+      
+      // Verify we have the expected number of results
+      expect(paginatedResults.length).toBe(2);
+      
+      // Verify the offset and limit worked by comparing with the original results
+      expect(paginatedResults[0]).toEqual(allUsers[1]);
+      expect(paginatedResults[1]).toEqual(allUsers[2]);
+    });
   });
   
   describe('INSERT queries', () => {

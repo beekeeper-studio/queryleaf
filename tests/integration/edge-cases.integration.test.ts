@@ -1,5 +1,7 @@
 import { ObjectId } from 'mongodb';
-import { testSetup } from './test-setup';
+import { testSetup, createLogger } from './test-setup';
+
+const log = createLogger('edge-cases');
 
 describe('Edge Cases Integration Tests', () => {
   beforeAll(async () => {

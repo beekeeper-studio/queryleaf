@@ -1,5 +1,8 @@
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { MongoClient, Db, ObjectId } from 'mongodb';
+import debug from 'debug';
+
+const log = debug('queryleaf:test:mongodb');
 
 /**
  * Creates and manages a MongoDB container for testing
@@ -68,26 +71,26 @@ export class MongoTestContainer {
     // Make sure to properly close all connections
     if (this.client) {
       try {
-        console.log('Closing MongoDB client connection...');
+        log('Closing MongoDB client connection...');
         await this.client.close(true); // Force close all connections
         this.client = null;
       } catch (err) {
-        console.error('Error closing MongoDB client:', err);
+        log('Error closing MongoDB client:', err);
       }
     }
     
     // Stop the container
     if (this.container) {
       try {
-        console.log('Stopping MongoDB container...');
+        log('Stopping MongoDB container...');
         await this.container.stop();
         this.container = null;
       } catch (err) {
-        console.error('Error stopping container:', err);
+        log('Error stopping container:', err);
       }
     }
     
-    console.log('MongoDB cleanup complete');
+    log('MongoDB cleanup complete');
   }
 }
 
@@ -123,29 +126,29 @@ export const testOrders = [
  * @param db MongoDB database
  */
 export async function loadFixtures(db: Db): Promise<void> {
-  console.log('Loading test fixtures into MongoDB...');
+  log('Loading test fixtures into MongoDB...');
   
-  console.log('Clearing existing data...');
+  log('Clearing existing data...');
   await db.collection('users').deleteMany({});
   await db.collection('products').deleteMany({});
   await db.collection('orders').deleteMany({});
   
-  console.log('Inserting users fixture data...');
+  log('Inserting users fixture data...');
   const userResult = await db.collection('users').insertMany(testUsers);
-  console.log(`Inserted ${userResult.insertedCount} users`);
+  log(`Inserted ${userResult.insertedCount} users`);
   
-  console.log('Inserting products fixture data...');
+  log('Inserting products fixture data...');
   const productResult = await db.collection('products').insertMany(testProducts);
-  console.log(`Inserted ${productResult.insertedCount} products`);
+  log(`Inserted ${productResult.insertedCount} products`);
   
-  console.log('Inserting orders fixture data...');
+  log('Inserting orders fixture data...');
   const orderResult = await db.collection('orders').insertMany(testOrders);
-  console.log(`Inserted ${orderResult.insertedCount} orders`);
+  log(`Inserted ${orderResult.insertedCount} orders`);
   
   // Verify the data is loaded
   const userCount = await db.collection('users').countDocuments();
   const productCount = await db.collection('products').countDocuments();
   const orderCount = await db.collection('orders').countDocuments();
   
-  console.log(`Fixture data loaded: ${userCount} users, ${productCount} products, ${orderCount} orders`);
+  log(`Fixture data loaded: ${userCount} users, ${productCount} products, ${orderCount} orders`);
 }

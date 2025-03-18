@@ -1,5 +1,7 @@
 import { ObjectId } from 'mongodb';
-import { testSetup } from './test-setup';
+import { testSetup, createLogger } from './test-setup';
+
+const log = createLogger('main-features');
 
 describe('Main SQL Features Integration Tests', () => {
   beforeAll(async () => {
@@ -31,8 +33,8 @@ describe('Main SQL Features Integration Tests', () => {
     await db.collection('simple_products').deleteMany({});
   });
 
-  // Skip the test that uses nested fields - it needs a specific syntax that's not consistent
-  test.skip('should support nested field access in WHERE clause', async () => {
+  // Fix the test that uses nested fields
+  test('should support nested field access in WHERE clause', async () => {
     // Arrange
     const db = testSetup.getDb();
     await db.collection('simple_products').insertMany([
@@ -130,14 +132,14 @@ describe('Main SQL Features Integration Tests', () => {
     const sql = "SELECT name as product_name, category as product_type, price as list_price FROM simple_products";
     
     const results = await queryLeaf.execute(sql);
-    console.log('Column aliases results:', JSON.stringify(results, null, 2));
+    log('Column aliases results:', JSON.stringify(results, null, 2));
     
     // Assert - check that the aliases are present in some form
     expect(results).toHaveLength(2);
     
     // Get the first result and check the keys that are available
     const keys = Object.keys(results[0]);
-    console.log('Available keys:', keys);
+    log('Available keys:', keys);
     
     // Simplified test to be more resilient to different implementation details
     // either directly access named fields or try to find them in _id
@@ -186,7 +188,7 @@ describe('Main SQL Features Integration Tests', () => {
     const sql = "SELECT name FROM simple_products WHERE category IN ('Electronics')";
     
     const results = await queryLeaf.execute(sql);
-    console.log('IN operator results:', JSON.stringify(results, null, 2));
+    log('IN operator results:', JSON.stringify(results, null, 2));
     
     // Assert - we should have Electronics products
     expect(results.length).toBeGreaterThan(0);

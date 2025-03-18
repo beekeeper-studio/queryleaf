@@ -1,6 +1,7 @@
 import { MongoTestContainer, loadFixtures, testUsers, testProducts, testOrders } from '../utils/mongo-container';
 import { QueryLeaf } from '../../src/index';
 import { Db } from 'mongodb';
+import debug from 'debug';
 
 /**
  * Base test setup for integration tests
@@ -26,11 +27,12 @@ export class IntegrationTestSetup {
    * Clean up the test environment
    */
   async cleanup(): Promise<void> {
+    const log = debug('queryleaf:test:cleanup');
     try {
       // Stop the container - this will close the connection
       await this.mongoContainer.stop();
     } catch (err) {
-      console.error('Error stopping MongoDB container:', err);
+      log('Error stopping MongoDB container:', err);
     }
   }
   
@@ -59,3 +61,8 @@ export const testSetup = new IntegrationTestSetup();
  * Export fixture data for tests
  */
 export { testUsers, testProducts, testOrders };
+
+/**
+ * Create debug logger for tests
+ */
+export const createLogger = (namespace: string) => debug(`queryleaf:test:${namespace}`);

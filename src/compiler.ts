@@ -8,6 +8,9 @@ import {
   DeleteCommand
 } from './interfaces';
 import { From } from 'node-sql-parser';
+import debug from 'debug';
+
+const log = debug('queryleaf:compiler');
 
 /**
  * SQL to MongoDB compiler implementation
@@ -21,7 +24,7 @@ export class SqlCompilerImpl implements SqlCompiler {
   compile(statement: SqlStatement): Command[] {
     const ast = statement.ast;
     
-    console.log('Compiling SQL AST:', JSON.stringify(ast, null, 2));
+    log('Compiling SQL AST:', JSON.stringify(ast, null, 2));
     
     // Pre-process the AST to handle nested fields that might be parsed as table references
     this.handleNestedFieldReferences(ast);
@@ -45,7 +48,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         throw new Error(`Unsupported SQL statement type: ${ast.type}`);
     }
     
-    console.log('Compiled to MongoDB command:', JSON.stringify(result, null, 2));
+    log('Compiled to MongoDB command:', JSON.stringify(result, null, 2));
     
     return result;
   }
@@ -97,7 +100,7 @@ export class SqlCompilerImpl implements SqlCompiler {
     }
 
     if (ast.limit) {
-      console.log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
+      log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
       if (typeof ast.limit === 'object' && 'value' in ast.limit && ast.limit.value) {
         // Standard PostgreSQL LIMIT format
         command.limit = Number(ast.limit.value);
@@ -131,8 +134,8 @@ export class SqlCompilerImpl implements SqlCompiler {
       throw new Error('VALUES are required for INSERT statements');
     }
 
-    console.log('INSERT values:', JSON.stringify(ast.values, null, 2));
-    console.log('INSERT columns:', JSON.stringify(ast.columns, null, 2));
+    log('INSERT values:', JSON.stringify(ast.values, null, 2));
+    log('INSERT columns:', JSON.stringify(ast.columns, null, 2));
     
     const documents = ast.values.map((valueList: any) => {
       const document: Record<string, any> = {};
@@ -152,7 +155,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         values = [valueList];
       }
       
-      console.log('Processed values:', JSON.stringify(values, null, 2));
+      log('Processed values:', JSON.stringify(values, null, 2));
       
       ast.columns.forEach((column: any, index: number) => {
         let columnName: string;
@@ -170,7 +173,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         }
       });
       
-      console.log('Constructed document:', JSON.stringify(document, null, 2));
+      log('Constructed document:', JSON.stringify(document, null, 2));
       return document;
     });
 
@@ -359,13 +362,13 @@ export class SqlCompilerImpl implements SqlCompiler {
   private convertColumns(columns: any[]): Record<string, any> {
     const projection: Record<string, any> = {};
     
-    console.log('Converting columns to projection:', JSON.stringify(columns, null, 2));
+    log('Converting columns to projection:', JSON.stringify(columns, null, 2));
     
     // If * is used, return empty projection (which means all fields)
     if (columns.some(col => col === '*' || 
         (typeof col === 'object' && col.expr && col.expr.type === 'star') ||
         (typeof col === 'object' && col.expr && col.expr.column === '*'))) {
-      console.log('Star (*) detected, returning empty projection');
+      log('Star (*) detected, returning empty projection');
       return {};
     }
     
@@ -449,7 +452,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       }
     });
     
-    console.log('Final projection:', JSON.stringify(projection, null, 2));
+    log('Final projection:', JSON.stringify(projection, null, 2));
     
     return projection;
   }
@@ -465,7 +468,7 @@ export class SqlCompilerImpl implements SqlCompiler {
   private processFieldName(fieldName: string): string {
     if (!fieldName) return fieldName;
     
-    console.log(`Processing field name: "${fieldName}"`);
+    log(`Processing field name: "${fieldName}"`);
     
     // First convert our placeholder format back to MongoDB dot notation
     // This transforms items__ARRAY_0__name => items.0.name
@@ -485,7 +488,7 @@ export class SqlCompilerImpl implements SqlCompiler {
     // Handle nested field access directly
     // MongoDB already uses dot notation for nested fields, so we can use it as is
     if (processed.includes('.')) {
-      console.log(`Using nested field in MongoDB filter: "${processed}"`);
+      log(`Using nested field in MongoDB filter: "${processed}"`);
     }
     
     return processed;
@@ -497,7 +500,7 @@ export class SqlCompilerImpl implements SqlCompiler {
    * address.zip might be parsed as table "address", column "zip"
    */
   private handleNestedFieldReferences(ast: any): void {
-    console.log('Handling nested field references in AST');
+    log('Handling nested field references in AST');
     
     // Handle column references in SELECT clause
     if (ast.columns && Array.isArray(ast.columns)) {
@@ -507,7 +510,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           // This could be a nested field - convert table.column to a single column path
           column.expr.column = `${column.expr.table}.${column.expr.column}`;
           column.expr.table = null;
-          console.log(`Converted SELECT column to nested field: ${column.expr.column}`);
+          log(`Converted SELECT column to nested field: ${column.expr.column}`);
         }
       });
     }
@@ -516,7 +519,7 @@ export class SqlCompilerImpl implements SqlCompiler {
     this.processWhereClauseForNestedFields(ast.where);
     
     // For debugging - show the resulting AST after transformation
-    console.log('AST after nested field handling:', JSON.stringify(ast?.where, null, 2));
+    log('AST after nested field handling:', JSON.stringify(ast?.where, null, 2));
   }
   
   /**
@@ -525,7 +528,7 @@ export class SqlCompilerImpl implements SqlCompiler {
   private processWhereClauseForNestedFields(where: any): void {
     if (!where) return;
     
-    console.log('Processing WHERE clause for nested fields:', JSON.stringify(where, null, 2));
+    log('Processing WHERE clause for nested fields:', JSON.stringify(where, null, 2));
     
     if (where.type === 'binary_expr') {
       // Process left and right sides recursively
@@ -534,15 +537,15 @@ export class SqlCompilerImpl implements SqlCompiler {
       
       // Handle column references in comparison expressions
       if (where.left && where.left.type === 'column_ref') {
-        console.log('Processing column reference:', JSON.stringify(where.left, null, 2));
+        log('Processing column reference:', JSON.stringify(where.left, null, 2));
         
         // Handle both direct dot notation in column name and table.column format
         if (where.left.column && where.left.column.includes('.')) {
           // Already has dot notation, just keep it
-          console.log('Column already has dot notation:', where.left.column);
+          log('Column already has dot notation:', where.left.column);
         } else if (where.left.table && where.left.column) {
           // Convert table.column format to a nested field path
-          console.log('Converting table.column to nested path:', 
+          log('Converting table.column to nested path:', 
             `${where.left.table}.${where.left.column}`);
           where.left.column = `${where.left.table}.${where.left.column}`;
           where.left.table = null;
@@ -580,8 +583,8 @@ export class SqlCompilerImpl implements SqlCompiler {
       return undefined;
     }
 
-    console.log('Converting GROUP BY:', JSON.stringify(groupby, null, 2));
-    console.log('With columns:', JSON.stringify(columns, null, 2));
+    log('Converting GROUP BY:', JSON.stringify(groupby, null, 2));
+    log('With columns:', JSON.stringify(columns, null, 2));
 
     // Create the group stage
     let group: { _id: any; [key: string]: any };
@@ -715,7 +718,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       });
     }
     
-    console.log('Generated group stage:', JSON.stringify(group, null, 2));
+    log('Generated group stage:', JSON.stringify(group, null, 2));
     return group;
   }
   
@@ -780,7 +783,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       pipeline.push({ $project: projectionFormat });
     }
     
-    console.log('Generated aggregate pipeline:', JSON.stringify(pipeline, null, 2));
+    log('Generated aggregate pipeline:', JSON.stringify(pipeline, null, 2));
     return pipeline;
   }
 
@@ -822,8 +825,8 @@ export class SqlCompilerImpl implements SqlCompiler {
       return [];
     }
     
-    console.log('Converting JOINs:', JSON.stringify(from, null, 2));
-    console.log('With WHERE:', JSON.stringify(where, null, 2));
+    log('Converting JOINs:', JSON.stringify(from, null, 2));
+    log('With WHERE:', JSON.stringify(where, null, 2));
     
     const lookups: { from: string; localField: string; foreignField: string; as: string }[] = [];
     const mainTable = this.extractTableName(from[0]);
@@ -868,7 +871,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       }
     }
     
-    console.log('Generated lookups:', JSON.stringify(lookups, null, 2));
+    log('Generated lookups:', JSON.stringify(lookups, null, 2));
     return lookups;
   }
   

@@ -1,5 +1,8 @@
 import { Parser as NodeSqlParser } from 'node-sql-parser';
 import { SqlParser, SqlStatement } from './interfaces';
+import debug from 'debug';
+
+const log = debug('queryleaf:parser');
 
 // Custom PostgreSQL mode with extensions to support our syntax needs
 const CUSTOM_DIALECT = {
@@ -45,7 +48,7 @@ export class SqlParserImpl implements SqlParser {
       
       // Then transform array index notation to a form the parser can handle
       const preprocessedSql = this.preprocessArrayIndexes(preprocessedNestedSql);
-      console.log('Preprocessed SQL:', preprocessedSql);
+      log('Preprocessed SQL:', preprocessedSql);
       
       // Parse with PostgreSQL mode but try to handle our custom extensions
       const ast = this.parser.astify(preprocessedSql, { 
@@ -66,7 +69,7 @@ export class SqlParserImpl implements SqlParser {
       if (errorMessage.includes('[')) {
         // Make a more aggressive transformation of the SQL for bracket syntax
         const fallbackSql = this.aggressivePreprocessing(sql);
-        console.log('Fallback SQL for array syntax:', fallbackSql);
+        log('Fallback SQL for array syntax:', fallbackSql);
         try {
           const ast = this.parser.astify(fallbackSql, { database: 'PostgreSQL' });
           const processedAst = this.postProcessAst(ast);
@@ -95,7 +98,7 @@ export class SqlParserImpl implements SqlParser {
    * since the SQL parser typically expects table.column format only
    */
   private preprocessNestedFields(sql: string): string {
-    console.log('Processing nested fields in SQL:', sql);
+    log('Processing nested fields in SQL:', sql);
     
     // Find deeply nested fields in the WHERE clause (contact.address.city)
     // and replace them with a placeholder format that the parser can handle
@@ -121,7 +124,7 @@ export class SqlParserImpl implements SqlParser {
     
     // Add debug info about replacements
     if (replacements.length > 0) {
-      console.log('Nested field replacements:', JSON.stringify(replacements, null, 2));
+      log('Nested field replacements:', JSON.stringify(replacements, null, 2));
     }
     
     // Store the replacements in this instance for later use
@@ -149,7 +152,7 @@ export class SqlParserImpl implements SqlParser {
     // Handle WHERE clause nested fields
     this.processWhereClause(processed);
     
-    console.log('Post-processed AST:', JSON.stringify(processed, null, 2));
+    log('Post-processed AST:', JSON.stringify(processed, null, 2));
     return processed;
   }
   

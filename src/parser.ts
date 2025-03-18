@@ -225,7 +225,7 @@ export class SqlParserImpl implements SqlParser {
           if (this._nestedFieldReplacements.length > placeholderIndex) {
             // Restore the original nested field name
             const [_, originalField] = this._nestedFieldReplacements[placeholderIndex];
-            console.log(`Restoring nested field: ${expr.left.column} -> ${originalField}`);
+            log(`Restoring nested field: ${expr.left.column} -> ${originalField}`);
             expr.left.column = originalField;
             expr.left.table = null;
           }

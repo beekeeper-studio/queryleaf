@@ -124,7 +124,11 @@ describe('Array Access Integration Tests', () => {
       }
     ]);
     
-    // Simplified: Just query the whole documents
+    // First verify with a direct MongoDB query to confirm the data structure
+    const directQueryResult = await db.collection('order_items').findOne({ orderId: 'ORD-2001' });
+    log('Direct MongoDB query result:', JSON.stringify(directQueryResult, null, 2));
+    
+    // Execute the query through QueryLeaf
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
       SELECT *
@@ -135,18 +139,63 @@ describe('Array Access Integration Tests', () => {
     const results = await queryLeaf.execute(sql);
     log('Order items query results:', JSON.stringify(results, null, 2));
     
-    // Just check that we have some data returned and can access it
-    expect(results.length).toBeGreaterThan(0);
+    // Basic validation
+    expect(results.length).toBe(1);
     
-    // Check that the first result is for ORD-2001
-    const firstOrder = results.find((r: any) => r.orderId === 'ORD-2001');
-    expect(firstOrder).toBeDefined();
+    // Check that the result is for ORD-2001
+    const order = results[0];
+    expect(order.orderId).toBe('ORD-2001');
     
-    // Verify we can access the items array (using different access patterns)
-    const items = firstOrder?.items || (firstOrder?._doc?.items) || [];
+    // Helper function to safely access arrays with different possible structures
+    const getItems = (result: any): any[] => {
+      if (Array.isArray(result.items)) return result.items;
+      if (result._doc && Array.isArray(result._doc.items)) return result._doc.items;
+      return [];
+    };
+    
+    // Get the items array
+    const items = getItems(order);
     expect(Array.isArray(items)).toBe(true);
+    expect(items.length).toBe(3);
     
-    // Instead of detailed checks, just verify basic structure
-    expect(firstOrder?.orderId).toBe('ORD-2001');
+    // Verify each item in the array has the correct structure and values
+    if (items.length >= 3) {
+      // First item
+      expect(items[0].id).toBe('ITEM-A1');
+      expect(items[0].name).toBe('Widget');
+      expect(items[0].category).toBe('Tools');
+      expect(Math.abs(items[0].price - 10.99)).toBeLessThan(0.01);
+      
+      // Second item
+      expect(items[1].id).toBe('ITEM-A2');
+      expect(items[1].name).toBe('Gadget');
+      expect(items[1].category).toBe('Electronics');
+      expect(Math.abs(items[1].price - 24.99)).toBeLessThan(0.01);
+      
+      // Third item
+      expect(items[2].id).toBe('ITEM-A3');
+      expect(items[2].name).toBe('Accessory');
+      expect(items[2].category).toBe('Misc');
+      expect(Math.abs(items[2].price - 5.99)).toBeLessThan(0.01);
+    }
+    
+    // Now test a more complex query that accesses array elements by index
+    // This tests the array access functionality more directly
+    const indexAccessSql = `
+      SELECT orderId
+      FROM order_items
+      WHERE items__ARRAY_1__category = 'Electronics'
+    `;
+    
+    const indexResults = await queryLeaf.execute(indexAccessSql);
+    log('Array index access results:', JSON.stringify(indexResults, null, 2));
+    
+    // Verify we can find orders by array index properties
+    expect(indexResults.length).toBeGreaterThan(0);
+    
+    // Both orders have Electronics as the second item's category
+    const orderIds = indexResults.map((r: any) => r.orderId);
+    expect(orderIds).toContain('ORD-2001');
+    expect(orderIds).toContain('ORD-2002');
   });
 });

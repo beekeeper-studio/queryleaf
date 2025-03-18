@@ -228,7 +228,11 @@ describe('Nested Fields Integration Tests', () => {
       }
     ]);
     
-    // Act - simplified query that doesn't use dot notation which might be problematic
+    // Act - first check with direct MongoDB query to confirm data
+    const directLaptopQuery = await db.collection('products').findOne({ name: 'Laptop' });
+    log('Direct laptop query result:', JSON.stringify(directLaptopQuery, null, 2));
+    
+    // Use QueryLeaf to query the data
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
       SELECT 
@@ -241,29 +245,109 @@ describe('Nested Fields Integration Tests', () => {
     const results = await queryLeaf.execute(sql);
     log('Nested fields query results:', JSON.stringify(results, null, 2));
     
-    // Assert - just check basic structure instead of detailed projections
+    // Helper function to safely access nested properties
+    const getNestedProp = (obj: any, path: string[]) => {
+      return path.reduce((o, key) => (o && typeof o === 'object') ? o[key] : undefined, obj);
+    };
+    
+    // Assert: Verify results count and basic structure
     expect(results).toHaveLength(2);
     
     const laptop = results.find((p: any) => p.name === 'Laptop');
     const phone = results.find((p: any) => p.name === 'Smartphone');
     
-    // Verify we have basic structure
     expect(laptop).toBeDefined();
     expect(phone).toBeDefined();
     
-    // Check if we can access the nested data (using different access patterns)
-    expect(laptop.details || laptop._doc?.details).toBeDefined();
-    expect(laptop.pricing || laptop._doc?.pricing).toBeDefined();
+    // Helper to get appropriate property access paths based on result format
+    const getAccessPath = (obj: any, prop: string): any => {
+      // Try different property access patterns based on how MongoDB might return the data
+      if (obj[prop]) return obj[prop];
+      if (obj._doc && obj._doc[prop]) return obj._doc[prop];
+      return undefined;
+    };
     
-    // Verify basic nested structure if the data is available
-    if (laptop.details && laptop.details.specs) {
-      expect(laptop.details.color).toBe('silver');
-      expect(laptop.details.specs.cpu).toBe('Intel i7');
+    // Assert: Verify laptop details fields
+    const laptopDetails = getAccessPath(laptop, 'details');
+    expect(laptopDetails).toBeDefined();
+    
+    if (laptopDetails) {
+      // Verify top-level nested properties
+      expect(laptopDetails.color).toBe('silver');
+      
+      // Verify dimensions object 
+      const dimensions = laptopDetails.dimensions;
+      expect(dimensions).toBeDefined();
+      if (dimensions) {
+        expect(dimensions.length).toBe(14);
+        expect(dimensions.width).toBe(10);
+        expect(dimensions.height).toBe(0.7);
+      }
+      
+      // Verify specs object and its nested properties
+      const specs = laptopDetails.specs;
+      expect(specs).toBeDefined();
+      if (specs) {
+        expect(specs.cpu).toBe('Intel i7');
+        expect(specs.ram).toBe('16GB');
+        
+        // Verify storage object
+        const storage = specs.storage;
+        expect(storage).toBeDefined();
+        if (storage) {
+          expect(storage.type).toBe('SSD');
+          expect(storage.size).toBe('512GB');
+        }
+        
+        // Verify graphics object
+        const graphics = specs.graphics;
+        expect(graphics).toBeDefined();
+        if (graphics) {
+          expect(graphics.type).toBe('Integrated');
+          expect(graphics.model).toBe('Intel Iris');
+        }
+      }
     }
     
-    if (phone.details && phone.details.specs) {
-      expect(phone.details.color).toBe('black');
-      expect(phone.details.specs.cpu).toBe('Snapdragon');
+    // Assert: Verify laptop pricing fields
+    const laptopPricing = getAccessPath(laptop, 'pricing');
+    expect(laptopPricing).toBeDefined();
+    
+    if (laptopPricing) {
+      expect(laptopPricing.msrp).toBe(1299);
+      
+      // Verify discount object
+      const discount = laptopPricing.discount;
+      expect(discount).toBeDefined();
+      if (discount) {
+        expect(discount.percentage).toBe(10);
+        // Use approximate comparison for floating point
+        expect(Math.abs(discount.amount - 129.9)).toBeLessThan(0.01);
+      }
+      
+      // Use approximate comparison for floating point
+      expect(Math.abs(laptopPricing.final - 1169.1)).toBeLessThan(0.01);
+    }
+    
+    // Assert: Verify phone fields (less detailed for brevity)
+    const phoneDetails = getAccessPath(phone, 'details');
+    expect(phoneDetails).toBeDefined();
+    
+    if (phoneDetails) {
+      expect(phoneDetails.color).toBe('black');
+      
+      const specs = phoneDetails.specs;
+      expect(specs).toBeDefined();
+      if (specs) {
+        expect(specs.cpu).toBe('Snapdragon');
+        expect(specs.ram).toBe('8GB');
+      }
+    }
+    
+    const phonePricing = getAccessPath(phone, 'pricing');
+    expect(phonePricing).toBeDefined();
+    if (phonePricing) {
+      expect(phonePricing.msrp).toBe(999);
     }
   });
 });

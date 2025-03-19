@@ -25,6 +25,11 @@ QueryLeaf is a library that translates SQL queries into MongoDB commands. It par
   - Array element access (e.g., `items[0].name`)
   - GROUP BY with aggregation functions (COUNT, SUM, AVG, MIN, MAX)
   - JOINs between collections
+- Multiple interfaces:
+  - Library for direct integration in your code
+  - CLI for command-line SQL queries
+  - Web Server for REST API access
+  - **PostgreSQL Wire Protocol Server** for connecting with standard PostgreSQL clients
 
 ## SQL to MongoDB Translation Examples
 

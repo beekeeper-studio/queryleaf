@@ -8,7 +8,7 @@ import bodyParser from 'body-parser';
 import { rateLimit } from 'express-rate-limit';
 // Removed swagger-ui-express import
 import { MongoClient } from 'mongodb';
-import { QueryLeaf } from '../../lib/dist/index';
+import { QueryLeaf } from '@queryleaf/lib';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 

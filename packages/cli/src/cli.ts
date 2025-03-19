@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { MongoClient } from 'mongodb';
-import { QueryLeaf } from '../../lib/dist/index';
+import { QueryLeaf } from '@queryleaf/lib';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import readline from 'readline';

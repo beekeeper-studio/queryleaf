@@ -8,10 +8,10 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "npm run clean && tsc",
+    "build": "yarn clean && tsc",
     "typecheck": "tsc --noEmit",
     "start": "ts-node src/pg-server.ts",
-    "test": "npm run test:unit && npm run test:integration",
+    "test": "yarn test:unit && yarn test:integration",
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration --runInBand",
     "example:protocol": "DEBUG=queryleaf:* ts-node examples/protocol-example.ts"

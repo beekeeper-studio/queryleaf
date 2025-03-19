@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "npm run clean && tsc",
+    "build": "yarn clean && tsc",
     "typecheck": "tsc --noEmit",
     "dev": "ts-node src/index.ts",
     "example": "ts-node src/examples/basic-usage.ts",

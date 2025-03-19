@@ -1,0 +1,12 @@
+# Configuration for Cloudflare Pages
+[build]
+  command = "pip install -r requirements.txt && mkdocs build"
+  publish = "site"
+  # Skip installing node modules completely
+  node_bundler = "none"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
+  # Disable all Node.js-related actions
+  NODE_VERSION = "none"
+  NPM_FLAGS = "--prefix=/dev/null"

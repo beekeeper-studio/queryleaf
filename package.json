@@ -38,7 +38,7 @@
     "format:check": "prettier --check \"packages/*/src/**/*.ts\"",
     "validate": "yarn typecheck && yarn lint && yarn test && yarn format:check",
     "docs:serve": "mkdocs serve",
-    "docs:build": "mkdocs build",
+    "docs:build": "pip install -r requirements.txt && mkdocs build",
     "docs:deploy": "mkdocs gh-deploy --force"
   },
   "keywords": [

@@ -1,0 +1,15 @@
+# Files for Cloudflare Pages to ignore
+node_modules/
+packages/
+bin/
+.git/
+.github/
+tmp/
+temp/
+coverage/
+
+# Only include the docs files
+!mkdocs.yml
+!docs/
+!docs-requirements.txt
+!_redirects

@@ -2,9 +2,11 @@
 /dist
 /build
 /site
+packages/*/dist
 
 # Dependencies
 /node_modules
+packages/*/node_modules
 
 # IDE and OS files
 .idea/

@@ -26,6 +26,12 @@ title: SQL for MongoDB that just works | QueryLeaf
       
       <div class="feature-card">
         <div class="feature-icon">🧰</div>
+        <h3>Multiple Ways to Use</h3>
+        <p>Use as a library in your code, run the CLI for terminal access, or launch the web server for a MongoDB SQL proxy - flexible options for every workflow.</p>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
         <h3>Zero Infrastructure Change</h3>
         <p>Works with your existing MongoDB client instances — no proxies, no middleware, no separate services. Minimal overhead, maximum compatibility.</p>
       </div>
@@ -151,13 +157,18 @@ db.collection('users').aggregate([
 <div class="integration-section">
   <div class="container">
     <div class="section-title">
-      <h2>No-Hassle Integration</h2>
-      <p>Works with your existing MongoDB code - no connection changes required</p>
+      <h2>Multiple Ways to Use</h2>
+      <p>Choose the right option for your workflow</p>
     </div>
     
-    <div class="integration-code">
+    <div class="tabs">
+      <div class="tab">
+        <input type="radio" id="tab1" name="tab-group" checked>
+        <label for="tab1">Library Integration</label>
+        <div class="tab-content">
+          <div class="integration-code">
 ```javascript
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 import { MongoClient } from 'mongodb';
 
 // Your existing MongoDB client
@@ -185,6 +196,90 @@ await db.collection('logs').insertOne({
   timestamp: new Date() 
 });
 ```
+          </div>
+          <div class="tab-buttons">
+            <a href="usage/examples/" class="md-button">
+              See More Examples
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tab">
+        <input type="radio" id="tab2" name="tab-group">
+        <label for="tab2">Command-Line Interface</label>
+        <div class="tab-content">
+          <div class="integration-code">
+```bash
+# Install globally
+npm install -g queryleaf
+
+# Execute a query
+queryleaf --db mydb --query "SELECT * FROM users WHERE age > 21"
+
+# Interactive mode
+queryleaf --db mydb --interactive
+
+sql> SELECT name, email FROM users LIMIT 5;
+name      | email                | age
+----------+----------------------+-----------
+John Doe  | john@example.com     | 30
+Jane Smith| jane@example.com     | 25
+...
+
+sql> .tables
+Collections in database:
+  users
+  products
+  orders
+```
+          </div>
+          <div class="tab-buttons">
+            <a href="usage/cli/" class="md-button">
+              CLI Documentation
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="tab">
+        <input type="radio" id="tab3" name="tab-group">
+        <label for="tab3">Web Server</label>
+        <div class="tab-content">
+          <div class="integration-code">
+```bash
+# Install globally
+npm install -g queryleaf
+
+# Start the server
+MONGO_DB=mydb queryleaf-server
+
+# Server starts on port 3000
+# - Web UI at http://localhost:3000
+# - API at http://localhost:3000/api
+# - Swagger docs at http://localhost:3000/api-docs
+```
+
+```javascript
+// API usage
+const response = await fetch('http://localhost:3000/api/query', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    sql: 'SELECT * FROM users WHERE age > 21'
+  })
+});
+
+const { results, rowCount, executionTime } = await response.json();
+```
+          </div>
+          <div class="tab-buttons">
+            <a href="usage/server/" class="md-button">
+              Server Documentation
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
     
     <div class="integration-buttons">
@@ -194,6 +289,55 @@ await db.collection('logs').insertOne({
     </div>
   </div>
 </div>
+
+<style>
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 30px 0;
+}
+
+.tab {
+  width: 100%;
+  order: 99;
+}
+
+.tab-content {
+  width: 100%;
+  display: none;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 0 10px 10px 10px;
+}
+
+.tab input[type="radio"] {
+  display: none;
+}
+
+.tab label {
+  display: inline-block;
+  padding: 15px 25px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 10px 10px 0 0;
+  background: #e6e6e6;
+  margin-right: 5px;
+}
+
+.tab input[type="radio"]:checked + label {
+  background: #f8f9fa;
+  border-bottom: 2px solid #2e7d32;
+}
+
+.tab input[type="radio"]:checked ~ .tab-content {
+  display: block;
+}
+
+.tab-buttons {
+  margin-top: 20px;
+  text-align: right;
+}
+</style>
 
 <div id="pricing" class="pricing-section">
   <div class="container">

@@ -8,7 +8,7 @@ This page provides practical examples of using QueryLeaf in various scenarios.
 
 ```typescript
 import { MongoClient } from 'mongodb';
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 
 async function runBasicQuery() {
   const client = new MongoClient('mongodb://localhost:27017');

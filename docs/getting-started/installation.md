@@ -13,17 +13,69 @@ Before installing QueryLeaf, make sure you have:
 
 ## Installing QueryLeaf
 
-You can install QueryLeaf using npm or yarn:
+QueryLeaf is divided into three separate packages to minimize dependencies:
+
+### Core Library
+
+Install the core library as a dependency in your project:
 
 === "npm"
     ```bash
-    npm install queryleaf
+    npm install @queryleaf/lib
     ```
 
 === "yarn"
     ```bash
-    yarn add queryleaf
+    yarn add @queryleaf/lib
     ```
+
+### Command Line Interface
+
+To use the command-line interface, install the CLI package:
+
+=== "npm"
+    ```bash
+    # As a project dependency
+    npm install @queryleaf/cli
+    
+    # Or globally
+    npm install -g @queryleaf/cli
+    ```
+
+=== "yarn"
+    ```bash
+    # As a project dependency
+    yarn add @queryleaf/cli
+    
+    # Or globally
+    yarn global add @queryleaf/cli
+    ```
+
+After installation, you'll have access to the `queryleaf` command.
+
+### Web Server
+
+To use the web server for a MongoDB SQL proxy, install the server package:
+
+=== "npm"
+    ```bash
+    # As a project dependency
+    npm install @queryleaf/server
+    
+    # Or globally
+    npm install -g @queryleaf/server
+    ```
+
+=== "yarn"
+    ```bash
+    # As a project dependency
+    yarn add @queryleaf/server
+    
+    # Or globally
+    yarn global add @queryleaf/server
+    ```
+
+After installation, you'll have access to the `queryleaf-server` command.
 
 ## TypeScript Support
 
@@ -114,4 +166,6 @@ Now that you have installed QueryLeaf, you can proceed to:
 
 - [Quick Start Guide](quickstart.md): Learn the basics of using QueryLeaf
 - [Core Concepts](../usage/core-concepts.md): Understand the architecture and principles
+- [CLI Documentation](../usage/cli.md): Learn how to use the command-line interface
+- [Server Documentation](../usage/server.md): Learn how to run and use the web server
 - [Examples](../usage/examples.md): See practical examples of using QueryLeaf

@@ -34,6 +34,8 @@ nav:
     - usage/mongodb-client.md
     - usage/dummy-client.md
     - usage/examples.md
+    - usage/cli.md
+    - usage/server.md
   - SQL Syntax:
     - sql-syntax/index.md
     - sql-syntax/select.md

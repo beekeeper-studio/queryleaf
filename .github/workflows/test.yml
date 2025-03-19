@@ -35,8 +35,17 @@ jobs:
     - name: Install dependencies
       run: yarn install --frozen-lockfile
     
-    - name: Run unit tests
-      run: yarn test:unit
+    - name: Run lib unit tests
+      run: yarn test:lib:unit
+      
+    - name: Run cli unit tests
+      run: yarn test:cli:unit
+      
+    - name: Run server unit tests
+      run: yarn test:server:unit
+      
+    - name: Run postgres-server unit tests
+      run: yarn test:pg-server:unit
 
     - name: Run integration tests
       run: yarn test:integration

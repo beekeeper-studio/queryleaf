@@ -1,0 +1,54 @@
+{
+  "name": "@queryleaf/postgres-server",
+  "version": "0.1.0",
+  "description": "PostgreSQL wire-compatible server for QueryLeaf",
+  "main": "dist/pg-server.js",
+  "bin": {
+    "queryleaf-pg-server": "./bin/queryleaf-pg-server"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "typecheck": "tsc --noEmit",
+    "start": "ts-node src/pg-server.ts",
+    "test": "jest",
+    "test:integration": "jest integration.test.ts --runInBand"
+  },
+  "keywords": [
+    "sql",
+    "mongodb",
+    "postgresql",
+    "postgres",
+    "wire protocol",
+    "compiler",
+    "query",
+    "server"
+  ],
+  "author": "",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "@queryleaf/lib": "0.1.0",
+    "debug": "^4.4.0",
+    "mongodb": "^6.14.2",
+    "pg-protocol": "^1.8.0",
+    "pg-query-stream": "^4.5.3",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "@types/jest": "^29.5.14",
+    "@types/mongodb": "^4.0.7",
+    "@types/pg": "^8.11.0",
+    "@types/pg-query-stream": "^3.4.0",
+    "@types/yargs": "^17.0.32",
+    "jest": "^29.7.0",
+    "mongodb-memory-server": "9.0.1",
+    "pg": "^8.11.3",
+    "ts-jest": "^29.2.6",
+    "ts-node": "^10.9.2",
+    "wait-port": "1.0.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

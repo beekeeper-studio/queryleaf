@@ -1,5 +1,7 @@
 # QueryLeaf Development Guide
 
+QueryLeaf is a SQL to MongoDB compiler / translator.
+
 ## Build & Test Commands
 - Full build: `yarn build`
 - Typecheck: `yarn typecheck`
@@ -12,6 +14,8 @@
 - Documentation: `yarn docs:serve` (dev), `yarn docs:build` (build)
 
 ## Code Style Guidelines
+- We use YARN, not NPM
+- GitHub actions is used for builds, see workflows in the .github folder.
 - TypeScript with strict typing; avoid `any` when possible
 - Single quotes, trailing commas, 2-space indentation, 100 char line limit
 - Prefix unused variables with underscore (e.g., `_unused`)

@@ -1,0 +1,97 @@
+name: Publish Packages to npm
+
+on:
+  push:
+    tags:
+      - 'v*'  # Run on any tag that starts with v (e.g., v1.0.0)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org/'
+          scope: '@queryleaf'
+
+      - name: Get tag version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run tests
+        run: yarn test
+
+      - name: Build packages
+        run: yarn build
+
+      # Update versions in package.json files before publishing
+      - name: Update lib package version
+        run: |
+          cd packages/lib
+          yarn version --new-version $VERSION --no-git-tag-version
+
+      - name: Update cli package version
+        run: |
+          cd packages/cli
+          yarn version --new-version $VERSION --no-git-tag-version
+          sed -i 's/"@queryleaf\/lib": ".*"/"@queryleaf\/lib": "'"$VERSION"'"/g' package.json
+
+      - name: Update server package version 
+        run: |
+          cd packages/server
+          yarn version --new-version $VERSION --no-git-tag-version
+          sed -i 's/"@queryleaf\/lib": ".*"/"@queryleaf\/lib": "'"$VERSION"'"/g' package.json
+
+      - name: Update postgres-server package version
+        run: |
+          cd packages/postgres-server
+          yarn version --new-version $VERSION --no-git-tag-version
+          sed -i 's/"@queryleaf\/lib": ".*"/"@queryleaf\/lib": "'"$VERSION"'"/g' package.json
+
+      # Publish packages in the correct order
+      - name: Publish lib package
+        run: |
+          cd packages/lib
+          yarn publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Publish the other packages in parallel since they all depend on lib
+      - name: Publish remaining packages
+        run: |
+          cd packages/cli
+          yarn publish --access public &
+          
+          cd ../server
+          yarn publish --access public &
+          
+          cd ../postgres-server
+          yarn publish --access public &
+          
+          wait
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Create GitHub release for this version
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ env.VERSION }}
+          body: |
+            # QueryLeaf v${{ env.VERSION }}
+            
+            Published packages:
+            - @queryleaf/lib@${{ env.VERSION }}
+            - @queryleaf/cli@${{ env.VERSION }}
+            - @queryleaf/server@${{ env.VERSION }}
+            - @queryleaf/postgres-server@${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

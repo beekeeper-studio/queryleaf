@@ -154,19 +154,34 @@ db.collection('users').aggregate([
   </div>
 </div>
 
-<div class="integration-section">
+<div class="use-cases-section">
   <div class="container">
     <div class="section-title">
-      <h2>Multiple Ways to Use</h2>
+      <h2>Three Ways to Use QueryLeaf</h2>
       <p>Choose the right option for your workflow</p>
     </div>
     
-    <div class="tabs">
-      <div class="tab">
-        <input type="radio" id="tab1" name="tab-group" checked>
-        <label for="tab1">Library Integration</label>
-        <div class="tab-content">
-          <div class="integration-code">
+    <!-- Library Package -->
+    <div class="package-section package-library">
+      <div class="package-content">
+        <h3>1. Library Integration</h3>
+        <ul class="package-features">
+          <li>Seamlessly integrate SQL to MongoDB translation into your application</li>
+          <li>Use with existing MongoDB client instances</li>
+          <li>Zero infrastructure change required</li>
+          <li>Minimal memory and CPU overhead</li>
+          <li>TypeScript support with full type definitions</li>
+        </ul>
+        <div class="package-buttons">
+          <a href="getting-started/installation/" class="md-button">
+            Library Installation
+          </a>
+          <a href="usage/examples/" class="md-button">
+            See Examples
+          </a>
+        </div>
+      </div>
+      <div class="package-code">
 ```javascript
 import { QueryLeaf } from '@queryleaf/lib';
 import { MongoClient } from 'mongodb';
@@ -196,23 +211,15 @@ await db.collection('logs').insertOne({
   timestamp: new Date() 
 });
 ```
-          </div>
-          <div class="tab-buttons">
-            <a href="usage/examples/" class="md-button">
-              See More Examples
-            </a>
-          </div>
-        </div>
       </div>
-      
-      <div class="tab">
-        <input type="radio" id="tab2" name="tab-group">
-        <label for="tab2">Command-Line Interface</label>
-        <div class="tab-content">
-          <div class="integration-code">
+    </div>
+    
+    <!-- CLI Package -->
+    <div class="package-section package-cli">
+      <div class="package-code">
 ```bash
 # Install globally
-npm install -g queryleaf
+npm install -g @queryleaf/cli
 
 # Execute a query
 queryleaf --db mydb --query "SELECT * FROM users WHERE age > 21"
@@ -233,23 +240,45 @@ Collections in database:
   products
   orders
 ```
-          </div>
-          <div class="tab-buttons">
-            <a href="usage/cli/" class="md-button">
-              CLI Documentation
-            </a>
-          </div>
+      </div>
+      <div class="package-content">
+        <h3>2. Command-Line Interface</h3>
+        <ul class="package-features">
+          <li>Query MongoDB databases using SQL from your terminal</li>
+          <li>Interactive SQL shell with auto-completion</li>
+          <li>Export results to JSON or CSV formats</li>
+          <li>Great for scripts, data extraction, and quick queries</li>
+          <li>View collection schemas and database structure</li>
+        </ul>
+        <div class="package-buttons">
+          <a href="usage/cli/" class="md-button">
+            CLI Documentation
+          </a>
         </div>
       </div>
-      
-      <div class="tab">
-        <input type="radio" id="tab3" name="tab-group">
-        <label for="tab3">Web Server</label>
-        <div class="tab-content">
-          <div class="integration-code">
+    </div>
+    
+    <!-- Server Package -->
+    <div class="package-section package-server">
+      <div class="package-content">
+        <h3>3. Web Server</h3>
+        <ul class="package-features">
+          <li>Run a MongoDB SQL proxy service with built-in web UI</li>
+          <li>RESTful API for SQL query execution</li>
+          <li>Connect analytics tools that expect SQL databases</li>
+          <li>Swagger API documentation included</li>
+          <li>Secure with built-in rate limiting and CORS support</li>
+        </ul>
+        <div class="package-buttons">
+          <a href="usage/server/" class="md-button">
+            Server Documentation
+          </a>
+        </div>
+      </div>
+      <div class="package-code">
 ```bash
 # Install globally
-npm install -g queryleaf
+npm install -g @queryleaf/server
 
 # Start the server
 MONGO_DB=mydb queryleaf-server
@@ -272,268 +301,473 @@ const response = await fetch('http://localhost:3000/api/query', {
 
 const { results, rowCount, executionTime } = await response.json();
 ```
-          </div>
-          <div class="tab-buttons">
-            <a href="usage/server/" class="md-button">
-              Server Documentation
-            </a>
-          </div>
-        </div>
       </div>
     </div>
     
-    <div class="integration-buttons">
+    <div class="package-buttons-container">
       <a href="getting-started/installation/" class="md-button md-button--primary">
-        5-Minute Installation Guide
+        Get Started with QueryLeaf
       </a>
     </div>
   </div>
 </div>
 
 <style>
-.tabs {
+.use-cases-section {
+  padding: 60px 0;
+}
+
+.package-section {
   display: flex;
-  flex-wrap: wrap;
-  margin: 30px 0;
+  margin: 40px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.tab {
-  width: 100%;
-  order: 99;
+.package-library {
+  background: linear-gradient(to right, #f5f9f5, #ffffff);
 }
 
-.tab-content {
-  width: 100%;
-  display: none;
-  padding: 20px;
-  background: #f8f9fa;
-  border-radius: 0 10px 10px 10px;
+.package-cli {
+  background: linear-gradient(to right, #ffffff, #f5f9f5);
+  flex-direction: row-reverse;
 }
 
-.tab input[type="radio"] {
-  display: none;
+.package-server {
+  background: linear-gradient(to right, #f5f9f5, #ffffff);
 }
 
-.tab label {
-  display: inline-block;
-  padding: 15px 25px;
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 10px 10px 0 0;
-  background: #e6e6e6;
-  margin-right: 5px;
+.package-content, .package-code {
+  flex: 1;
+  padding: 30px;
 }
 
-.tab input[type="radio"]:checked + label {
-  background: #f8f9fa;
+.package-content h3 {
+  font-size: 24px;
+  margin-top: 0;
+  color: #2e7d32;
   border-bottom: 2px solid #2e7d32;
+  padding-bottom: 10px;
+  display: inline-block;
 }
 
-.tab input[type="radio"]:checked ~ .tab-content {
-  display: block;
+.package-features {
+  list-style-type: none;
+  padding-left: 5px;
+  margin: 20px 0;
 }
 
-.tab-buttons {
+.package-features li {
+  padding: 8px 0 8px 30px;
+  position: relative;
+}
+
+.package-features li:before {
+  content: "✓";
+  color: #2e7d32;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.package-buttons {
   margin-top: 20px;
-  text-align: right;
+}
+
+.package-buttons-container {
+  text-align: center;
+  margin-top: 40px;
+}
+
+@media (max-width: 768px) {
+  .package-section {
+    flex-direction: column;
+  }
+  
+  .package-cli {
+    flex-direction: column;
+  }
 }
 </style>
 
 <div id="pricing" class="pricing-section">
   <div class="container">
     <div class="section-title">
-      <h2>Pricing Plans</h2>
-      <p>Choose the right plan for your needs</p>
+      <h2>Pricing & Licensing</h2>
+      <p>Choose the plan that's right for your needs</p>
     </div>
     
-    <div class="pricing-oss">
+    <div class="pricing-tiers">
       <div class="pricing-card">
         <div class="pricing-header">
-          <h3>Open Source</h3>
-          <div class="pricing-price">
-            <span class="price-free">Free</span>
+          <h3>Developer</h3>
+          <div class="pricing-cost">
+            <span class="price">$49</span>
+            <span class="price-period">per developer / month</span>
           </div>
-          <p class="pricing-description">Totally free under the terms of the AGPL v3 license</p>
-        </div>
-        
-        <div class="pricing-features">
-          <ul>
-            <li>Full feature set</li>
-            <li>AGPL license</li>
-            <li>Community support via GitHub</li>
-            <li>Documentation access</li>
-          </ul>
-        </div>
-        
-        <div class="pricing-button">
-          <a href="licenses/agpl/" class="md-button">
-            Read License Details
-          </a>
-        </div>
-      </div>
-    </div>
-    
-    <div class="pricing-separator">
-      <span>Commercial Licenses</span>
-    </div>
-    
-    <div class="pricing-grid">
-      <div class="pricing-card">
-        <div class="pricing-header">
-          <h3>Indie</h3>
-          <div class="pricing-price">
-            <span class="price-currency">$</span>
-            <span class="price">49</span>
-            <span class="period">/month</span>
-          </div>
-          <p class="pricing-description">For independent developers and small teams</p>
-          <p class="pricing-guarantee">30-day money-back guarantee</p>
-        </div>
-        
-        <div class="pricing-button">
-          <a href="licenses/commercial/" class="md-button">
-            Get Started
-          </a>
+          <p class="pricing-description">For individual developers and small teams</p>
         </div>
         
         <div class="pricing-features">
           <ul>
             <li>Full feature set</li>
             <li>Commercial license</li>
-            <li>Up to 5 developers</li>
             <li>Email support</li>
-            <li>Proprietary application use</li>
-            <li>Annual billing option (save 10%)</li>
+            <li>All packages included (Library, CLI, Server)</li>
+            <li>Use in proprietary applications</li>
+            <li>No AGPL requirements</li>
           </ul>
         </div>
-      </div>
-      
-      <div class="pricing-card pricing-card--highlighted">
-        <div class="pricing-badge">POPULAR</div>
-        <div class="pricing-header">
-          <h3>Startup</h3>
-          <div class="pricing-price">
-            <span class="price-currency">$</span>
-            <span class="price">149</span>
-            <span class="period">/month</span>
-          </div>
-          <p class="pricing-description">For growing teams with advanced MongoDB needs</p>
-          <p class="pricing-guarantee">30-day money-back guarantee</p>
-        </div>
         
-        <div class="pricing-button">
-          <a href="licenses/commercial/" class="md-button md-button--primary">
-            Get Started
+        <div class="pricing-footer">
+          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Developer License" class="md-button">
+            Purchase License
           </a>
         </div>
-        
-        <div class="pricing-features">
-          <ul>
-            <li>Full feature set</li>
-            <li>Commercial license</li>
-            <li>Up to 20 developers</li>
-            <li>Priority email support</li>
-            <li>Proprietary application use</li>
-            <li>Dedicated Slack channel</li>
-            <li>Integration assistance</li>
-            <li>Annual billing option (save 15%)</li>
-          </ul>
-        </div>
       </div>
       
-      <div class="pricing-card">
+      <div class="pricing-card pricing-card-highlighted">
         <div class="pricing-header">
           <h3>Business</h3>
-          <div class="pricing-price">
-            <span class="price-currency">$</span>
-            <span class="price">349</span>
-            <span class="period">/month</span>
+          <div class="pricing-cost">
+            <span class="price">$99+</span>
+            <span class="price-period">per month</span>
           </div>
-          <p class="pricing-description">For businesses with complex MongoDB deployments</p>
-          <p class="pricing-guarantee">30-day money-back guarantee</p>
-        </div>
-        
-        <div class="pricing-button">
-          <a href="licenses/commercial/" class="md-button">
-            Get Started
-          </a>
+          <p class="pricing-description">For teams and growing businesses</p>
         </div>
         
         <div class="pricing-features">
           <ul>
-            <li>Full feature set</li>
-            <li>Commercial license</li>
+            <li>Everything in Developer tier</li>
             <li>Unlimited developers</li>
-            <li>Priority support with SLA</li>
-            <li>Proprietary application use</li>
-            <li>Dedicated Slack channel</li>
-            <li>Integration consulting</li>
-            <li>Custom feature development</li>
-            <li>Annual billing option (save 20%)</li>
+            <li>Priority email support</li>
+            <li>Quarterly reviews</li>
+            <li>Performance optimization</li>
+            <li>Extended security updates</li>
           </ul>
+        </div>
+        
+        <div class="pricing-footer">
+          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Business License" class="md-button md-button--primary">
+            Purchase License
+          </a>
         </div>
       </div>
       
-      <div class="pricing-card pricing-card--enterprise">
+      <div class="pricing-card">
         <div class="pricing-header">
           <h3>Enterprise</h3>
-          <div class="pricing-price">
-            <span class="price">Contact Us</span>
+          <div class="pricing-cost">
+            <span class="price">Contact</span>
+            <span class="price-period">custom pricing</span>
           </div>
-          <p class="pricing-description">For specialized use cases, high-volume applications, and custom deployments</p>
+          <p class="pricing-description">For organizations needing dedicated support and custom features</p>
         </div>
         
-        <div class="pricing-button">
-          <a href="mailto:info@queryleaf.com" class="md-button">
+        <div class="pricing-features">
+          <ul>
+            <li>Everything in Business tier</li>
+            <li>Dedicated account manager</li>
+            <li>Priority support with SLA</li>
+            <li>Custom development available</li>
+            <li>Deployment assistance</li>
+            <li>Training and onboarding</li>
+          </ul>
+        </div>
+        
+        <div class="pricing-footer">
+          <a href="mailto:enterprise@queryleaf.com?subject=QueryLeaf Enterprise License" class="md-button">
             Contact Sales
           </a>
         </div>
-        
-        <div class="pricing-features">
-          <ul>
-            <li>Everything in Business plan</li>
-            <li>Custom licensing terms</li>
-            <li>White-glove onboarding</li>
-            <li>24/7 support options</li>
-            <li>Performance optimization</li>
-            <li>Custom integration services</li>
-            <li>On-site training available</li>
-          </ul>
-        </div>
       </div>
     </div>
     
-    <div class="pricing-comparison">
-      <a href="licenses/commercial/">View detailed plan comparison</a>
-    </div>
-    
-    <div class="pricing-faq">
-      <h3>Frequently Asked Questions</h3>
-      
-      <div class="faq-grid">
-        <div class="faq-item">
-          <h4>What happens after the 30-day guarantee period?</h4>
-          <p>If you're not satisfied for any reason within the first 30 days, you can request a full refund. After that, your subscription will continue automatically until canceled.</p>
+    <div class="community-card">
+      <div class="community-content">
+        <div class="community-header">
+          <h3>Community Edition</h3>
+          <div class="community-cost">
+            <span class="price">$0</span>
+            <span class="price-period">forever</span>
+          </div>
         </div>
-        
-        <div class="faq-item">
-          <h4>Can I switch plans later?</h4>
-          <p>Yes, you can upgrade or downgrade your plan at any time. When upgrading, we'll prorate your existing subscription. When downgrading, changes take effect at the next billing cycle.</p>
+        <p class="community-description">
+          For open source projects, individual developers, and learning
+        </p>
+        <div class="community-features">
+          <ul>
+            <li>Full feature set including Library, CLI, and Server</li>
+            <li>AGPL v3 license</li>
+            <li>Community support via GitHub</li>
+            <li>Source code access</li>
+          </ul>
         </div>
-        
-        <div class="faq-item">
-          <h4>How does the license work?</h4>
-          <p>Commercial licenses allow you to use QueryLeaf in proprietary applications without the AGPL requirements. The license is based on the number of developers working with the code.</p>
-        </div>
-        
-        <div class="faq-item">
-          <h4>Is there a way to try QueryLeaf before purchasing?</h4>
-          <p>Yes! You can use the open source version under AGPL for evaluation, or request a demo from our team to see how it works in your specific use case.</p>
-        </div>
+      </div>
+      <div class="community-cta">
+        <a href="getting-started/installation/" class="md-button">
+          Get Started Free
+        </a>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+.pricing-section {
+  padding: 60px 0;
+  background: #f8f9fa;
+}
+
+.pricing-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 30px;
+  margin: 40px 0 20px;
+}
+
+.pricing-card {
+  flex: 1;
+  min-width: 280px;
+  max-width: 350px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  background: white;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.pricing-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.pricing-card-highlighted {
+  border: 2px solid #2e7d32;
+  position: relative;
+}
+
+.pricing-card-highlighted:before {
+  content: "Most Popular";
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #2e7d32;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 0 0 0 8px;
+}
+
+.pricing-header {
+  padding: 25px 20px;
+  text-align: center;
+  background: #f5f9f5;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.pricing-header h3 {
+  margin: 0 0 15px;
+  font-size: 22px;
+  color: #2e7d32;
+}
+
+.pricing-cost {
+  margin-bottom: 15px;
+}
+
+.price {
+  font-size: 36px;
+  font-weight: bold;
+}
+
+.price-period {
+  font-size: 14px;
+  color: #666;
+  display: block;
+  margin-top: 5px;
+}
+
+.pricing-description {
+  font-size: 14px;
+  color: #666;
+  margin: 10px 0 0;
+}
+
+.pricing-features {
+  padding: 20px;
+  flex-grow: 1;
+}
+
+.pricing-features ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pricing-features li {
+  padding: 8px 0 8px 28px;
+  position: relative;
+  font-size: 15px;
+}
+
+.pricing-features li:before {
+  content: "✓";
+  color: #2e7d32;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.pricing-footer {
+  padding: 20px;
+  text-align: center;
+  border-top: 1px solid #e0e0e0;
+}
+
+.pricing-more-info {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  margin-top: 20px;
+}
+
+/* Community card styles */
+.community-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to right, #f0f9f0, #ffffff);
+  border-radius: 10px;
+  padding: 25px 40px;
+  margin-top: 40px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border: 1px dashed #2e7d32;
+}
+
+.community-content {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.community-header {
+  margin-right: 30px;
+  min-width: 200px;
+}
+
+.community-header h3 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  color: #2e7d32;
+}
+
+.community-cost {
+  margin-bottom: 10px;
+}
+
+.community-description {
+  font-size: 15px;
+  color: #555;
+  margin: 0 30px 0 0;
+  max-width: 250px;
+  flex-shrink: 0;
+}
+
+.community-features {
+  flex: 1;
+}
+
+.community-features ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.community-features li {
+  padding: 4px 10px 4px 25px;
+  position: relative;
+  font-size: 14px;
+  flex: 1 0 45%;
+  min-width: 200px;
+}
+
+.community-features li:before {
+  content: "✓";
+  color: #2e7d32;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+.community-cta {
+  padding-left: 20px;
+  border-left: 1px dashed #ccc;
+}
+
+@media (max-width: 1024px) {
+  .community-card {
+    flex-direction: column;
+    padding: 25px;
+  }
+  
+  .community-content {
+    margin-bottom: 20px;
+  }
+  
+  .community-cta {
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px dashed #ccc;
+    padding-top: 20px;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .community-description {
+    margin: 0 0 15px 0;
+    max-width: 100%;
+  }
+  
+  .community-features ul {
+    flex-direction: column;
+  }
+  
+  .community-features li {
+    flex: 1 0 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .pricing-tiers {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .pricing-card {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+  }
+  
+  .community-header {
+    margin-right: 0;
+    margin-bottom: 15px;
+    width: 100%;
+  }
+  
+  .community-content {
+    flex-direction: column;
+  }
+}
+</style>
 
 <div class="cta-section">
   <div class="container">

@@ -26,16 +26,22 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started:
-    - getting-started/installation.md
-    - getting-started/quickstart.md
-  - Usage:
-    - usage/core-concepts.md
-    - usage/mongodb-client.md
-    - usage/dummy-client.md
-    - usage/examples.md
-    - usage/cli.md
-    - usage/server.md
+  - Library:
+    - Getting Started:
+      - getting-started/installation.md
+      - getting-started/quickstart.md
+    - Usage:
+      - usage/core-concepts.md
+      - usage/mongodb-client.md
+      - usage/dummy-client.md
+      - usage/examples.md
+    - Debugging:
+      - debugging/troubleshooting.md
+      - debugging/limitations.md
+  - CLI:
+    - Overview: usage/cli.md
+  - Server:
+    - Overview: usage/server.md
   - SQL Syntax:
     - sql-syntax/index.md
     - sql-syntax/select.md
@@ -46,13 +52,6 @@ nav:
     - sql-syntax/array-access.md
     - sql-syntax/joins.md
     - sql-syntax/group-by.md
-  - Debugging:
-    - debugging/troubleshooting.md
-    - debugging/limitations.md
-  - Pricing: pricing.md
-  - Licenses:
-    - licenses/agpl.md
-    - licenses/commercial.md
 
 markdown_extensions:
   - pymdownx.highlight:

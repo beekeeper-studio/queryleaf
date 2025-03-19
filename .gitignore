@@ -24,5 +24,5 @@ temp/
 # yarn.lock
 # pnpm-lock.yaml
 # or if you use specific test result files
-# coverage/
+coverage/
 # test-results/

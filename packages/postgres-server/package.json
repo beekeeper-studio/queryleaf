@@ -11,8 +11,10 @@
     "build": "npm run clean && tsc",
     "typecheck": "tsc --noEmit",
     "start": "ts-node src/pg-server.ts",
-    "test": "jest",
-    "test:integration": "jest integration.test.ts --runInBand"
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration --runInBand",
+    "example:protocol": "DEBUG=queryleaf:* ts-node examples/protocol-example.ts"
   },
   "keywords": [
     "sql",
@@ -42,8 +44,10 @@
     "@types/pg-query-stream": "^3.4.0",
     "@types/yargs": "^17.0.32",
     "jest": "^29.7.0",
-    "mongodb-memory-server": "9.0.1",
+    "mongodb-memory-server": "^10.1.4",
     "pg": "^8.11.3",
+    "portfinder": "^1.0.32",
+    "testcontainers": "^10.21.0",
     "ts-jest": "^29.2.6",
     "ts-node": "^10.9.2",
     "wait-port": "1.0.4"

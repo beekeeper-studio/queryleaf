@@ -42,6 +42,8 @@ nav:
     - Overview: usage/cli.md
   - Server:
     - Overview: usage/server.md
+  - PostgreSQL Server:
+    - Overview: usage/postgres-server.md
   - SQL Syntax:
     - sql-syntax/index.md
     - sql-syntax/select.md
@@ -52,6 +54,9 @@ nav:
     - sql-syntax/array-access.md
     - sql-syntax/joins.md
     - sql-syntax/group-by.md
+  - Support:
+    - Pricing & Licensing: support/pricing.md
+    - License FAQ: support/license-faq.md
 
 markdown_extensions:
   - pymdownx.highlight:

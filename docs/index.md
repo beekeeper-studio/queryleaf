@@ -157,7 +157,7 @@ db.collection('users').aggregate([
 <div class="use-cases-section">
   <div class="container">
     <div class="section-title">
-      <h2>Three Ways to Use QueryLeaf</h2>
+      <h2>Four Ways to Use QueryLeaf</h2>
       <p>Choose the right option for your workflow</p>
     </div>
     
@@ -304,6 +304,52 @@ const { results, rowCount, executionTime } = await response.json();
       </div>
     </div>
     
+    <!-- PostgreSQL Server Package -->
+    <div class="package-section package-pg-server">
+      <div class="package-content">
+        <h3>4. PostgreSQL Wire Protocol Server</h3>
+        <ul class="package-features">
+          <li>Connect to MongoDB using any standard PostgreSQL client</li>
+          <li>Use tools like pgAdmin, DBeaver, or Beekeeper Studio</li>
+          <li>Native integration with any application supporting PostgreSQL</li>
+          <li>No specialized drivers or adapters needed</li>
+          <li>Transaction support (BEGIN, COMMIT, ROLLBACK)</li>
+        </ul>
+        <div class="package-buttons">
+          <a href="usage/postgres-server/" class="md-button">
+            PostgreSQL Server Documentation
+          </a>
+        </div>
+      </div>
+      <div class="package-code">
+```bash
+# Install globally
+npm install -g @queryleaf/postgres-server
+
+# Start the PostgreSQL-compatible server
+queryleaf-pg-server --db mydb
+
+# Connect with any PostgreSQL client:
+psql -h localhost -p 5432 -d mydb -U any_username
+```
+
+```
+# Or use in your application code:
+import { MongoClient } from 'mongodb';
+import { PostgresServer } from '@queryleaf/postgres-server';
+
+// Create and start the server
+const mongoClient = new MongoClient('mongodb://localhost:27017');
+await mongoClient.connect();
+
+const pgServer = new PostgresServer(mongoClient, 'mydb', {
+  port: 5432,
+  host: 'localhost'
+});
+```
+      </div>
+    </div>
+    
     <div class="package-buttons-container">
       <a href="getting-started/installation/" class="md-button md-button--primary">
         Get Started with QueryLeaf
@@ -336,6 +382,11 @@ const { results, rowCount, executionTime } = await response.json();
 
 .package-server {
   background: linear-gradient(to right, #f5f9f5, #ffffff);
+}
+
+.package-pg-server {
+  background: linear-gradient(to right, #ffffff, #f5f9f5);
+  flex-direction: row-reverse;
 }
 
 .package-content, .package-code {
@@ -414,7 +465,7 @@ const { results, rowCount, executionTime } = await response.json();
             <li>Full feature set</li>
             <li>Commercial license</li>
             <li>Email support</li>
-            <li>All packages included (Library, CLI, Server)</li>
+            <li>All packages included (Library, CLI, Web Server, PostgreSQL Server)</li>
             <li>Use in proprietary applications</li>
             <li>No AGPL requirements</li>
           </ul>

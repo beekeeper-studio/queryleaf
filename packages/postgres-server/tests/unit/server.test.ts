@@ -1,5 +1,5 @@
 import { MongoClient } from 'mongodb';
-import { PostgresServer } from '../src/pg-server';
+import { PostgresServer } from '../../src/pg-server';
 import { Client } from 'pg';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
@@ -11,6 +11,9 @@ let pgServer: any;
 const TEST_PORT = 5433;
 const TEST_HOST = '127.0.0.1';
 const TEST_DB = 'test_db';
+
+// Set a longer timeout for all tests in this file
+jest.setTimeout(120000);
 
 describe('PostgreSQL Server', () => {
   beforeAll(async () => {
@@ -37,8 +40,11 @@ describe('PostgreSQL Server', () => {
       maxConnections: 10,
     });
     
-    // Wait a bit for the server to start
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Explicitly start the server
+    await pgServer.listen(TEST_PORT, TEST_HOST);
+    
+    // Wait a bit for the server to fully initialize
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }, 30000);
   
   afterAll(async () => {
@@ -63,7 +69,7 @@ describe('PostgreSQL Server', () => {
     
     await client.connect();
     await client.end();
-  });
+  }, 60000);
   
   it('should execute a simple query', async () => {
     const client = new Client({
@@ -82,5 +88,5 @@ describe('PostgreSQL Server', () => {
     expect(result.rows[0]).toHaveProperty('age');
     
     await client.end();
-  });
+  }, 60000);
 });

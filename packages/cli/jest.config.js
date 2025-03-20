@@ -9,7 +9,4 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   openHandlesTimeout: 30000,
   detectOpenHandles: true,
-  moduleNameMapper: {
-    '^@queryleaf/lib(.*)$': '<rootDir>/../lib/dist$1',
-  }
 };

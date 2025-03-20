@@ -305,7 +305,7 @@ These tests will:
 To run all tests:
 
 ```bash
-npm run test:all
+npm run test
 ```
 
 ### Continuous Integration

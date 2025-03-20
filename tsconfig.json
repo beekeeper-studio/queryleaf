@@ -1,9 +1,4 @@
 {
   "extends": "./tsconfig.base.json",
-  "files": [],
-  "references": [
-    { "path": "./packages/lib" },
-    { "path": "./packages/cli" },
-    { "path": "./packages/server" }
-  ]
+  "files": []
 }

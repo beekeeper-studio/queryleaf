@@ -7,7 +7,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "build": "yarn clean && tsc",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npx tsc --noEmit",
     "dev": "ts-node src/index.ts",
     "example": "ts-node src/examples/basic-usage.ts",
     "test": "jest",

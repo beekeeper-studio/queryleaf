@@ -14,15 +14,6 @@ jobs:
       matrix:
         node-version: [18.x, 20.x, 22.x]
         # See supported Node.js versions at https://nodejs.org/en/about/releases/
-    
-    services:
-      # We don't actually need this service since we use testcontainers
-      # but having it here ensures Docker is available for testcontainers
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
-    
     steps:
     - uses: actions/checkout@v3
     
@@ -38,6 +29,8 @@ jobs:
     - name: Run lib unit tests
       run: yarn test:lib:unit
       
+    - name: Gotta build the lib first for downstream stuff
+      run: yarn build:lib
     - name: Run cli unit tests
       run: yarn test:cli:unit
       

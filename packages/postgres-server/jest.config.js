@@ -12,9 +12,6 @@ module.exports = {
     '!src/**/*.d.ts',
   ],
   // Resolve @queryleaf/lib from the monorepo
-  moduleNameMapper: {
-    '^@queryleaf/lib$': '<rootDir>/../lib/src/index.ts'
-  },
   // Add options for path mapping
   modulePaths: ['<rootDir>/../'],
   // Tell Jest to transpile lib files too when importing

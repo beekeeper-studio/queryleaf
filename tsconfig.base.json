@@ -10,16 +10,8 @@
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
+    "baseUrl": ".", 
     "paths": {
-      "@queryleaf/lib": ["packages/lib/src"],
-      "@queryleaf/lib/*": ["packages/lib/src/*"],
-      "@queryleaf/cli": ["packages/cli/src"],
-      "@queryleaf/cli/*": ["packages/cli/src/*"],
-      "@queryleaf/server": ["packages/server/src"],
-      "@queryleaf/server/*": ["packages/server/src/*"],
-      "@queryleaf/postgres-server": ["packages/postgres-server/src"],
-      "@queryleaf/postgres-server/*": ["packages/postgres-server/src/*"]
     }
   },
   "exclude": ["node_modules", "dist"]

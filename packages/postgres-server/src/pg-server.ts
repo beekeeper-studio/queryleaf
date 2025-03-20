@@ -45,7 +45,10 @@ const yargsInstance = yargs(hideBin(process.argv))
     type: 'boolean',
   })
   .example('$0 --db mydb --port 5432', 'Start the PostgreSQL-compatible server on port 5432')
-  .example('$0 --db mydb --uri mongodb://username:password@localhost:27017', 'Connect to MongoDB with authentication')
+  .example(
+    '$0 --db mydb --uri mongodb://username:password@localhost:27017',
+    'Connect to MongoDB with authentication'
+  )
   .epilog('For more information, visit https://github.com/beekeeper-studio/queryleaf')
   .help()
   .alias('help', 'h')
@@ -101,54 +104,50 @@ class PostgresServer {
     this.authPassthrough = options.authPassthrough || false;
     this.dbName = dbName;
     this.mongoUri = options.mongoUri || '';
-    
+
     // Create TCP server
     this.server = createServer((socket) => {
       debug(`New connection from ${socket.remoteAddress}:${socket.remotePort}`);
-      
+
       // Check max connections
       if (this.connections.size >= this.maxConnections) {
         debug(`Connection limit reached (${this.maxConnections}), rejecting connection`);
         socket.end();
         return;
       }
-      
+
       // Create protocol handler for this connection
-      const handler = new ProtocolHandler(
-        socket, 
-        this.queryLeaf, 
-        { 
-          authPassthrough: this.authPassthrough,
-          mongoClient: this.mongoClient,
-          dbName: this.dbName,
-          mongoUri: this.mongoUri
-        }
-      );
+      const handler = new ProtocolHandler(socket, this.queryLeaf, {
+        authPassthrough: this.authPassthrough,
+        mongoClient: this.mongoClient,
+        dbName: this.dbName,
+        mongoUri: this.mongoUri,
+      });
       this.connections.add(handler);
-      
+
       // Remove connection on close
       socket.on('close', () => {
         debug(`Connection closed from ${socket.remoteAddress}:${socket.remotePort}`);
         this.connections.delete(handler);
       });
     });
-    
+
     // Handle server errors
     this.server.on('error', (err) => {
       console.error('Server error:', err);
     });
-    
+
     // Handle process signals (only when running as main module)
     if (require.main === module) {
       process.on('SIGINT', () => this.shutdown(true));
       process.on('SIGTERM', () => this.shutdown(true));
-      
+
       // Only auto-listen if running as main module
       this.listen(options.port, options.host);
     }
     // For tests, we'll call listen() explicitly
   }
-  
+
   /**
    * Start listening for connections
    * @param port Port to listen on
@@ -162,13 +161,13 @@ class PostgresServer {
         debug(`Connected to MongoDB at ${this.mongoClient.options.hosts?.join(',')}`);
         resolve();
       });
-      
+
       // Handle initial connection errors
       const errorHandler = (err: Error) => {
         this.server.removeListener('error', errorHandler);
         reject(err);
       };
-      
+
       this.server.once('error', errorHandler);
     });
   }
@@ -179,15 +178,15 @@ class PostgresServer {
    */
   async shutdown(exitProcess = false): Promise<void> {
     debug('Shutting down server...');
-    
+
     // Close server - stop accepting new connections
     this.server.close();
-    
+
     // Close MongoDB connection
     await this.mongoClient.close();
-    
+
     debug('Server stopped');
-    
+
     // Only exit the process if explicitly requested (for CLI usage)
     if (exitProcess) {
       process.exit(0);
@@ -206,19 +205,19 @@ async function main(): Promise<void> {
   const host = argv.host || 'localhost';
   const maxConnections = argv.maxConnections || 100;
   const authPassthrough = argv.authPassthrough || false;
-  
+
   if (!db) {
     console.error('Error: MongoDB database name is required. Use --db option.');
     process.exit(1);
   }
-  
+
   try {
     // Connect to MongoDB
     debug(`Connecting to MongoDB: ${uri}`);
     const mongoClient = new MongoClient(uri);
     await mongoClient.connect();
     debug(`Connected to MongoDB, using database: ${db}`);
-    
+
     // Start PostgreSQL server
     new PostgresServer(mongoClient, db, {
       port,
@@ -227,7 +226,7 @@ async function main(): Promise<void> {
       authPassthrough,
       mongoUri: uri,
     });
-    
+
     console.log(`🌱 QueryLeaf PostgreSQL-compatible server started at ${host}:${port}`);
     console.log(`Connected to MongoDB database: ${db}`);
     console.log(`Connection string: postgresql://<username>@${host}:${port}/${db}`);
@@ -241,7 +240,7 @@ async function main(): Promise<void> {
 
 // Run the main function if this file is executed directly
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error(`Unhandled error: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   });

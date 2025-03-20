@@ -81,7 +81,12 @@ export interface AggregateCommand extends BaseCommand {
 /**
  * Union type of all MongoDB commands
  */
-export type Command = FindCommand | InsertCommand | UpdateCommand | DeleteCommand | AggregateCommand;
+export type Command =
+  | FindCommand
+  | InsertCommand
+  | UpdateCommand
+  | DeleteCommand
+  | AggregateCommand;
 
 /**
  * SQL parser interface

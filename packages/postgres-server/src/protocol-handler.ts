@@ -26,16 +26,16 @@ interface ClientMessage {
 }
 
 // Simplified message types
-type MessageName = 
-  | 'startup' 
-  | 'password' 
-  | 'query' 
-  | 'parse' 
-  | 'bind' 
-  | 'describe' 
-  | 'execute' 
-  | 'sync' 
-  | 'flush' 
+type MessageName =
+  | 'startup'
+  | 'password'
+  | 'query'
+  | 'parse'
+  | 'bind'
+  | 'describe'
+  | 'execute'
+  | 'sync'
+  | 'flush'
   | 'terminate';
 
 interface PgUser {
@@ -115,7 +115,7 @@ class Serializer {
 
     const body = Buffer.alloc(size);
     body.writeUInt16BE(fields.length, 0);
-    
+
     let offset = 2;
     for (const field of fields) {
       offset += Serializer.encodeString(field.name).copy(body, offset);
@@ -150,7 +150,7 @@ class Serializer {
 
     const body = Buffer.alloc(size);
     body.writeUInt16BE(values.length, 0);
-    
+
     let offset = 2;
     for (const value of values) {
       if (value === null) {
@@ -188,7 +188,7 @@ class Serializer {
   error(fields: Record<string, any>): BackendMessage {
     // Build error fields - each field has a type (1 byte) and value string (null-terminated)
     const fieldBuffers: Buffer[] = [];
-    
+
     // Add required fields
     if (fields.severity) {
       fieldBuffers.push(Buffer.from('S' + fields.severity + '\0', 'utf8'));
@@ -199,7 +199,7 @@ class Serializer {
     if (fields.message) {
       fieldBuffers.push(Buffer.from('M' + fields.message + '\0', 'utf8'));
     }
-    
+
     // Add optional fields if present
     if (fields.detail) {
       fieldBuffers.push(Buffer.from('D' + fields.detail + '\0', 'utf8'));
@@ -210,10 +210,10 @@ class Serializer {
     if (fields.position) {
       fieldBuffers.push(Buffer.from('P' + fields.position + '\0', 'utf8'));
     }
-    
+
     // Add null terminator
     fieldBuffers.push(Buffer.from([0]));
-    
+
     const body = Buffer.concat(fieldBuffers);
     return { buffer: Serializer.createMessage('E', body) };
   }
@@ -222,29 +222,32 @@ class Serializer {
 // Simplified message parser
 function parseMessage(type: string, buffer: Buffer): ClientMessage | null {
   debug(`Parsing message of type '${type}', buffer length: ${buffer.length}`);
-  
+
   switch (type) {
-    case 'Q': { // Simple query
+    case 'Q': {
+      // Simple query
       // Format: 'Q' + int32 length + string (null-terminated)
       try {
         debug(`Query buffer: ${buffer.slice(0, Math.min(buffer.length, 20)).toString('hex')}`);
-        
+
         if (buffer.length < 6) {
           debug('Query buffer too short, waiting for more data');
           return null; // Need more data
         }
-        
+
         const messageLength = buffer.readUInt32BE(1);
         debug(`Message length from packet: ${messageLength}`);
-        
+
         if (buffer.length < messageLength + 1) {
-          debug(`Buffer length ${buffer.length} less than required ${messageLength + 1}, waiting for more data`);
+          debug(
+            `Buffer length ${buffer.length} less than required ${messageLength + 1}, waiting for more data`
+          );
           return null; // Need more data
         }
-        
+
         // For query message 'Q', the query string is right after the length field (4 bytes)
         // and extends to the end of the message, minus the null terminator
-        let queryString = "";
+        let queryString = '';
         try {
           // Accounting for null byte at the end
           queryString = buffer.toString('utf8', 5, 1 + messageLength - 1);
@@ -253,36 +256,40 @@ function parseMessage(type: string, buffer: Buffer): ClientMessage | null {
           debug(`Error extracting query string: ${error}`);
           return null;
         }
-        
-        return { 
+
+        return {
           length: 1 + messageLength, // msgType + full message with length
           type: 'query',
-          string: queryString
+          string: queryString,
         };
       } catch (err) {
         debug(`Error parsing query message: ${err instanceof Error ? err.message : String(err)}`);
         return null;
       }
     }
-    case '\0': { // Startup message
+    case '\0': {
+      // Startup message
       // Format: int32 protocol version + key-value pairs (null-terminated strings)
       const parameters: Record<string, string> = {};
       let offset = 4; // Skip protocol version
-      
+
       try {
-        if (buffer.length <= 8) {  // Need at least protocol version + one key-value pair
+        if (buffer.length <= 8) {
+          // Need at least protocol version + one key-value pair
           debug('Startup message buffer too short, waiting for more data');
           return null;
         }
-        
+
         const messageLength = buffer.readUInt32BE(0);
         debug(`Startup message length: ${messageLength}`);
-        
+
         if (buffer.length < messageLength) {
-          debug(`Buffer length ${buffer.length} less than required ${messageLength}, waiting for more data`);
+          debug(
+            `Buffer length ${buffer.length} less than required ${messageLength}, waiting for more data`
+          );
           return null;
         }
-        
+
         // Trying to read key-value pairs with error handling
         while (offset < Math.min(buffer.length - 1, messageLength)) {
           // Check for end of parameters
@@ -290,47 +297,47 @@ function parseMessage(type: string, buffer: Buffer): ClientMessage | null {
             offset++;
             break;
           }
-          
+
           const keyStart = offset;
           while (offset < buffer.length && buffer[offset] !== 0) {
             offset++;
           }
-          
+
           if (offset >= buffer.length) {
             debug('Unexpected end of buffer while reading key');
             break;
           }
-          
+
           const key = buffer.toString('utf8', keyStart, offset);
           offset++; // Skip null terminator
-          
+
           if (offset >= buffer.length) {
             debug('Unexpected end of buffer after key');
             break;
           }
-          
+
           const valueStart = offset;
           while (offset < buffer.length && buffer[offset] !== 0) {
             offset++;
           }
-          
+
           if (offset >= buffer.length) {
             debug('Unexpected end of buffer while reading value');
             break;
           }
-          
+
           const value = buffer.toString('utf8', valueStart, offset);
           offset++; // Skip null terminator
-          
+
           debug(`Startup parameter: ${key}=${value}`);
           parameters[key] = value;
         }
-        
+
         debug(`Extracted startup parameters: ${JSON.stringify(parameters)}`);
         return {
           length: messageLength,
           type: 'startup',
-          parameters
+          parameters,
         };
       } catch (err) {
         debug(`Error parsing startup message: ${err instanceof Error ? err.message : String(err)}`);
@@ -338,108 +345,116 @@ function parseMessage(type: string, buffer: Buffer): ClientMessage | null {
         return {
           length: buffer.length,
           type: 'startup',
-          parameters
+          parameters,
         };
       }
     }
-    case 'p': { // Password message
+    case 'p': {
+      // Password message
       const passwordStr = buffer.toString('utf8', 4, buffer.length - 1); // Skip length and remove null terminator
       return {
         length: 1 + 4 + passwordStr.length + 1,
         type: 'password',
-        string: passwordStr
+        string: passwordStr,
       };
     }
-    case 'P': { // Parse
+    case 'P': {
+      // Parse
       let offset = 4; // Skip length
-      
+
       // Read statement name (null-terminated)
       const nameStart = offset;
       while (buffer[offset] !== 0) offset++;
       const name = buffer.toString('utf8', nameStart, offset);
       offset++; // Skip null terminator
-      
+
       // Read query string (null-terminated)
       const queryStart = offset;
       while (buffer[offset] !== 0) offset++;
       const query = buffer.toString('utf8', queryStart, offset);
       offset++; // Skip null terminator
-      
+
       // Read parameter data types (if any)
       const numParams = buffer.readUInt16BE(offset);
       offset += 2;
-      
+
       const dataTypeIDs = [];
       for (let i = 0; i < numParams; i++) {
         dataTypeIDs.push(buffer.readUInt32BE(offset));
         offset += 4;
       }
-      
+
       return {
         length: offset,
         type: 'parse',
         name,
         query,
-        dataTypeIDs
+        dataTypeIDs,
       };
     }
-    case 'B': { // Bind
+    case 'B': {
+      // Bind
       // Simplified - we don't parse all fields
       return {
         length: buffer.length,
-        type: 'bind'
+        type: 'bind',
       };
     }
-    case 'D': { // Describe
+    case 'D': {
+      // Describe
       const objectType = buffer[4]; // 'S' for prepared statement, 'P' for portal
       const nameStart = 5;
       let offset = nameStart;
       while (buffer[offset] !== 0) offset++;
       const name = buffer.toString('utf8', nameStart, offset);
-      
+
       return {
         length: offset + 1,
         type: 'describe',
         string: objectType === 83 ? 'S' : 'P', // 83 is ASCII for 'S'
-        name
+        name,
       };
     }
-    case 'E': { // Execute
+    case 'E': {
+      // Execute
       let offset = 4; // Skip length
-      
+
       // Read portal name (null-terminated)
       const portalStart = offset;
       while (buffer[offset] !== 0) offset++;
       const portal = buffer.toString('utf8', portalStart, offset);
       offset++; // Skip null terminator
-      
+
       // Read max rows
       const maxRows = buffer.readUInt32BE(offset);
       offset += 4;
-      
+
       return {
         length: offset,
         type: 'execute',
         portal,
-        maxRows
+        maxRows,
       };
     }
-    case 'S': { // Sync
+    case 'S': {
+      // Sync
       return {
         length: 5, // 1 + 4 (msgType + length)
-        type: 'sync'
+        type: 'sync',
       };
     }
-    case 'H': { // Flush
+    case 'H': {
+      // Flush
       return {
         length: 5, // 1 + 4 (msgType + length)
-        type: 'flush'
+        type: 'flush',
       };
     }
-    case 'X': { // Terminate
+    case 'X': {
+      // Terminate
       return {
         length: 5, // 1 + 4 (msgType + length)
-        type: 'terminate'
+        type: 'terminate',
       };
     }
     default:
@@ -450,9 +465,11 @@ function parseMessage(type: string, buffer: Buffer): ClientMessage | null {
 
 function readMessageType(buffer: Buffer): string {
   if (buffer.length < 1) return '';
-  
-  debug(`Reading message type from buffer: ${buffer.slice(0, Math.min(10, buffer.length)).toString('hex')}`);
-  
+
+  debug(
+    `Reading message type from buffer: ${buffer.slice(0, Math.min(10, buffer.length)).toString('hex')}`
+  );
+
   // Special case for startup message (no message type code)
   if (buffer.length >= 4) {
     const possibleVersion = buffer.readUInt32BE(0);
@@ -461,13 +478,13 @@ function readMessageType(buffer: Buffer): string {
       return '\0'; // Use null char as special indicator
     }
   }
-  
+
   // For query messages - if starts with Q (ascii 81)
   if (buffer.length >= 1 && buffer[0] === 81) {
     debug('Detected query message (Q)');
     return 'Q';
   }
-  
+
   debug(`First byte is ${buffer[0]} (${String.fromCharCode(buffer[0])})`);
   return buffer.toString('utf8', 0, 1);
 }
@@ -499,7 +516,9 @@ export class ProtocolHandler {
     this.dbName = options.dbName || null;
     this.mongoUri = options.mongoUri || null;
 
-    debug(`New protocol handler created for socket from ${socket.remoteAddress}:${socket.remotePort}`);
+    debug(
+      `New protocol handler created for socket from ${socket.remoteAddress}:${socket.remotePort}`
+    );
 
     this.socket.on('data', (data) => this.handleData(data));
     this.socket.on('error', (err) => this.handleError(err));
@@ -507,7 +526,7 @@ export class ProtocolHandler {
     this.socket.on('end', () => debug('Socket end event received'));
     this.socket.on('timeout', () => debug('Socket timeout event received'));
     this.socket.on('drain', () => debug('Socket drain event received'));
-    
+
     // Set a longer timeout for testing
     this.socket.setTimeout(60000);
   }
@@ -516,21 +535,27 @@ export class ProtocolHandler {
    * Handle incoming data from the client
    */
   private handleData(data: Buffer): void {
-    debug(`Received data of length ${data.length}, first few bytes: ${data.slice(0, Math.min(10, data.length)).toString('hex')}`);
-    
+    debug(
+      `Received data of length ${data.length}, first few bytes: ${data.slice(0, Math.min(10, data.length)).toString('hex')}`
+    );
+
     this.buffer = Buffer.concat([this.buffer, data]);
     debug(`Buffer length after concat: ${this.buffer.length}`);
-    
+
     // Process all complete messages in the buffer
     while (this.buffer.length > 5) {
       try {
         const messageType = readMessageType(this.buffer);
-        debug(`Message type identified: '${messageType}' (code ${messageType.charCodeAt(0)}), buffer length: ${this.buffer.length}`);
-        
+        debug(
+          `Message type identified: '${messageType}' (code ${messageType.charCodeAt(0)}), buffer length: ${this.buffer.length}`
+        );
+
         const message = parseMessage(messageType, this.buffer);
-        
+
         if (!message) {
-          debug(`No complete message found for type '${messageType}' in buffer of length ${this.buffer.length}`);
+          debug(
+            `No complete message found for type '${messageType}' in buffer of length ${this.buffer.length}`
+          );
           // Not a complete message yet
           break;
         }
@@ -538,16 +563,23 @@ export class ProtocolHandler {
         // Remove the processed message from the buffer
         this.buffer = this.buffer.subarray(message.length);
         debug(`Message processed, remaining buffer length: ${this.buffer.length}`);
-        
+
         debug('Received message type:', messageType, message);
-        
+
         // Handle the message
         this.handleMessage(message.type as MessageName, message);
       } catch (err) {
         debug('Error parsing message:', err);
         // Dump the buffer for debugging
-        debug(`Buffer content at error (hex): ${this.buffer.slice(0, Math.min(50, this.buffer.length)).toString('hex')}`);
-        debug(`Buffer content at error (ascii): ${this.buffer.slice(0, Math.min(50, this.buffer.length)).toString('ascii').replace(/[^\x20-\x7E]/g, '.')}`);
+        debug(
+          `Buffer content at error (hex): ${this.buffer.slice(0, Math.min(50, this.buffer.length)).toString('hex')}`
+        );
+        debug(
+          `Buffer content at error (ascii): ${this.buffer
+            .slice(0, Math.min(50, this.buffer.length))
+            .toString('ascii')
+            .replace(/[^\x20-\x7E]/g, '.')}`
+        );
         // Keep processing remaining buffer
         break;
       }
@@ -559,7 +591,7 @@ export class ProtocolHandler {
    */
   private handleMessage(type: MessageName, message: ClientMessage): void {
     debug('Handling message type:', type);
-    
+
     switch (type) {
       case 'startup':
         this.handleStartup(message);
@@ -603,28 +635,28 @@ export class ProtocolHandler {
    */
   private handleStartup(message: ClientMessage): void {
     debug('Startup message:', message);
-    
+
     // Extract user and database from parameters
     if (message.parameters) {
       const user = message.parameters.user;
       const database = message.parameters.database;
-      
+
       debug(`Startup parameters: user=${user}, database=${database}`);
-      
+
       if (user) {
         this.user = {
           username: user,
-          password: ''
+          password: '',
         };
       }
-      
+
       if (database) {
         this.database = database;
       }
     } else {
       debug('Warning: No parameters in startup message');
     }
-    
+
     // For testing: if no parameters provided, auto-authenticate
     if (!message.parameters || Object.keys(message.parameters).length === 0) {
       debug('Auto-authenticating (test mode)');
@@ -635,7 +667,7 @@ export class ProtocolHandler {
       this.sendReadyForQuery();
       return;
     }
-    
+
     // In a real implementation, you would check authentication requirements
     // For this simple implementation, we'll request password authentication
     debug('Requesting password authentication');
@@ -647,48 +679,50 @@ export class ProtocolHandler {
    */
   private async handlePassword(message: ClientMessage): Promise<void> {
     debug('Password message received');
-    
+
     if (!this.user || !message.string) {
       debug('Missing user or password');
       this.sendErrorResponse('Authentication failed: missing credentials');
       this.socket.end();
       return;
     }
-    
+
     const password = message.string;
     this.user.password = password;
-    
+
     // If auth passthrough is enabled, try to authenticate with MongoDB
     if (this.authPassthrough && this.mongoUri && this.dbName) {
       try {
         debug(`Authenticating with MongoDB using passthrough credentials: ${this.user.username}`);
-        
+
         // Construct a new MongoDB URI with the provided credentials
         let uri = this.mongoUri;
-        
+
         // Parse the original URI to preserve all parts except credentials
         const parsedUri = new URL(this.mongoUri);
-        
+
         // Replace auth part with provided credentials
         parsedUri.username = encodeURIComponent(this.user.username);
         parsedUri.password = encodeURIComponent(this.user.password);
-        
+
         // Generate new URI string
         uri = parsedUri.toString();
-        
-        debug(`Attempting MongoDB connection with auth: ${uri.replace(/\/\/[^@]*@/, '//***:***@')}`);
-        
+
+        debug(
+          `Attempting MongoDB connection with auth: ${uri.replace(/\/\/[^@]*@/, '//***:***@')}`
+        );
+
         // Try to connect with the new credentials
         const newClient = new MongoClient(uri);
         await newClient.connect();
-        
+
         // If we got here, authentication was successful
         debug('MongoDB authentication successful');
-        
+
         // Create a new QueryLeaf instance with the authenticated client
         this.queryLeaf = new QueryLeaf(newClient, this.dbName);
         this.authenticated = true;
-        
+
         // Send authentication successful and ready for query
         this.sendAuthenticationOk();
         this.sendParameterStatus();
@@ -696,14 +730,16 @@ export class ProtocolHandler {
         this.sendReadyForQuery();
       } catch (err) {
         debug('MongoDB authentication failed:', err);
-        this.sendErrorResponse(`Authentication failed: ${err instanceof Error ? err.message : 'Invalid credentials'}`);
+        this.sendErrorResponse(
+          `Authentication failed: ${err instanceof Error ? err.message : 'Invalid credentials'}`
+        );
         this.socket.end();
       }
     } else {
       // If auth passthrough is disabled, accept any password
       debug('Auth passthrough disabled, accepting any credentials');
       this.authenticated = true;
-      
+
       // Send authentication successful and ready for query
       this.sendAuthenticationOk();
       this.sendParameterStatus();
@@ -718,23 +754,23 @@ export class ProtocolHandler {
    */
   private flattenObject(obj: any, prefix = ''): Record<string, any> {
     const result: Record<string, any> = {};
-    
+
     // If obj is null or a primitive, return directly
     if (obj === null || obj === undefined || typeof obj !== 'object') {
       return { [prefix]: obj };
     }
-    
+
     // Handle arrays by converting them to JSON strings
     if (Array.isArray(obj)) {
       return { [prefix]: JSON.stringify(obj) };
     }
-    
+
     // Recursively flatten object properties
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
         const value = obj[key];
         const newKey = prefix ? `${prefix}_${key}` : key;
-        
+
         if (value !== null && typeof value === 'object') {
           // For nested objects, flatten them with the parent key as prefix
           if (Array.isArray(value)) {
@@ -751,7 +787,7 @@ export class ProtocolHandler {
         }
       }
     }
-    
+
     return result;
   }
 
@@ -760,13 +796,13 @@ export class ProtocolHandler {
    */
   private async handleQuery(queryString: string): Promise<void> {
     debug('Query message:', queryString);
-    
+
     if (!this.authenticated) {
       debug('Not authenticated, rejecting query');
       this.sendErrorResponse('Not authenticated');
       return;
     }
-    
+
     try {
       // Handle transaction control statements
       if (queryString.trim().toUpperCase() === 'BEGIN') {
@@ -788,7 +824,7 @@ export class ProtocolHandler {
         this.sendReadyForQuery();
         return;
       }
-      
+
       // For testing: if query is 'SELECT test', return a simple test result
       if (queryString.trim().toLowerCase() === 'select test') {
         debug('Handling test query');
@@ -798,13 +834,15 @@ export class ProtocolHandler {
         this.sendReadyForQuery();
         return;
       }
-      
+
       // Execute the query through QueryLeaf
       debug('Executing query through QueryLeaf...');
       const result = await this.queryLeaf.execute(queryString);
-      debug('Query execution complete, result:', 
-           Array.isArray(result) ? `Array[${result.length}]` : typeof result);
-      
+      debug(
+        'Query execution complete, result:',
+        Array.isArray(result) ? `Array[${result.length}]` : typeof result
+      );
+
       // Determine command tag for the operation
       let commandTag = 'SELECT';
       if (queryString.trim().toUpperCase().startsWith('INSERT')) {
@@ -817,25 +855,25 @@ export class ProtocolHandler {
         const count = result?.deletedCount || 0;
         commandTag = `DELETE ${count}`;
       }
-      
+
       // Send the result rows
       if (Array.isArray(result)) {
         debug(`Sending ${result.length} rows`);
         if (result.length > 0) {
           // Flatten all objects in the result to avoid nested fields
-          const flattenedResults = result.map(row => this.flattenObject(row));
+          const flattenedResults = result.map((row) => this.flattenObject(row));
           debug(`Flattened results: first row sample: ${JSON.stringify(flattenedResults[0])}`);
-          
+
           // Get column names from the first flattened result
           const columnNames = Object.keys(flattenedResults[0]);
           debug(`Flattened column names: ${columnNames.join(', ')}`);
-          
+
           // Send row description
           this.sendRowDescription(columnNames);
-          
+
           // Send data rows
           for (const row of flattenedResults) {
-            this.sendDataRow(columnNames.map(col => row[col]));
+            this.sendDataRow(columnNames.map((col) => row[col]));
           }
         } else {
           debug('Empty result set');
@@ -848,7 +886,7 @@ export class ProtocolHandler {
         // We still need to send an empty result set
         this.sendRowDescription([]);
       }
-      
+
       // Send command complete
       debug(`Sending command complete: ${commandTag}`);
       this.sendCommandComplete(commandTag);
@@ -865,15 +903,15 @@ export class ProtocolHandler {
    */
   private handleParse(message: ClientMessage): void {
     const { name, query } = message;
-    
+
     debug('Parse message:', name, query);
-    
+
     try {
       // Store the prepared statement for later
       if (name && query) {
         this.preparedStatements.set(name, query);
       }
-      
+
       // Send parse complete
       this.sendMessage(this.serializer.parseComplete());
     } catch (err) {
@@ -886,7 +924,7 @@ export class ProtocolHandler {
    */
   private handleBind(message: ClientMessage): void {
     debug('Bind message:', message);
-    
+
     // In a real implementation, you would bind parameters to a prepared statement
     // For now, just acknowledge the bind
     this.sendMessage(this.serializer.bindComplete());
@@ -897,19 +935,19 @@ export class ProtocolHandler {
    */
   private handleDescribe(message: ClientMessage): void {
     debug('Describe message:', message);
-    
+
     const type = message.string;
     const name = message.name;
-    
+
     if (type === 'S' && name) {
       // Describe prepared statement
       const query = this.preparedStatements.get(name);
-      
+
       if (!query) {
         this.sendErrorResponse(`Unknown prepared statement: ${name}`);
         return;
       }
-      
+
       // For now, we'll send an empty row description
       this.sendRowDescription([]);
     } else if (type === 'P') {
@@ -924,9 +962,9 @@ export class ProtocolHandler {
    */
   private async handleExecute(message: ClientMessage): Promise<void> {
     debug('Execute message:', message);
-    
+
     const { portal, maxRows } = message;
-    
+
     try {
       // In a real implementation, you would execute the prepared statement
       // For now, just send an empty result and completion
@@ -1017,7 +1055,7 @@ export class ProtocolHandler {
     // Generate random process ID and key
     const processId = Math.floor(Math.random() * 10000);
     const secretKey = Math.floor(Math.random() * 1000000);
-    
+
     this.sendMessage(this.serializer.backendKeyData(processId, secretKey));
   }
 
@@ -1030,7 +1068,7 @@ export class ProtocolHandler {
     // 'T' = in a transaction
     // 'E' = in a failed transaction
     const status = this.inTransaction ? 'T' : 'I';
-    
+
     this.sendMessage(this.serializer.readyForQuery(status));
   }
 
@@ -1047,7 +1085,7 @@ export class ProtocolHandler {
       dataTypeModifier: -1,
       format: 0, // Text format
     }));
-    
+
     this.sendMessage(this.serializer.rowDescription(fields));
   }
 
@@ -1056,11 +1094,11 @@ export class ProtocolHandler {
    */
   private sendDataRow(values: any[]): void {
     // Convert all values to strings
-    const stringValues = values.map(v => {
+    const stringValues = values.map((v) => {
       if (v === null || v === undefined) return null;
       return String(v);
     });
-    
+
     this.sendMessage(this.serializer.dataRow(stringValues));
   }
 

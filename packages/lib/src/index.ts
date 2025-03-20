@@ -1,10 +1,4 @@
-import { 
-  SqlStatement, 
-  Command, 
-  SqlParser, 
-  SqlCompiler, 
-  CommandExecutor 
-} from './interfaces';
+import { SqlStatement, Command, SqlParser, SqlCompiler, CommandExecutor } from './interfaces';
 import { MongoClient } from 'mongodb';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';
@@ -58,7 +52,7 @@ export class QueryLeaf {
   compile(statement: SqlStatement): Command[] {
     return this.compiler.compile(statement);
   }
-  
+
   /**
    * Get the command executor instance
    * @returns Command executor
@@ -66,7 +60,7 @@ export class QueryLeaf {
   getExecutor(): CommandExecutor {
     return this.executor;
   }
-  
+
   /**
    * No-op method for backward compatibility
    * QueryLeaf no longer manages MongoDB connections
@@ -100,7 +94,7 @@ export {
   SqlParserImpl,
   SqlCompilerImpl,
   MongoExecutor,
-  DummyMongoClient
+  DummyMongoClient,
 };
 
 // Re-export interfaces

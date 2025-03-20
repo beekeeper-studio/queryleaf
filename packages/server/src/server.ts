@@ -41,7 +41,10 @@ const argv = yargs(hideBin(process.argv))
     type: 'number',
   })
   .example('$0 --db mydb --port 3000', 'Start the server on port 3000')
-  .example('$0 --db mydb --uri mongodb://username:password@localhost:27017', 'Connect to MongoDB with authentication')
+  .example(
+    '$0 --db mydb --uri mongodb://username:password@localhost:27017',
+    'Connect to MongoDB with authentication'
+  )
   .epilog('For more information, visit https://github.com/beekeeper-studio/queryleaf')
   .help()
   .alias('help', 'h')
@@ -214,19 +217,19 @@ const swaggerDocument = {
 // Main function
 async function main() {
   const { uri, db, port, host, rateLimit: rateLimitValue } = argv;
-  
+
   // Connect to MongoDB
   console.log(`Connecting to MongoDB: ${uri}`);
   const mongoClient = new MongoClient(uri as string);
   await mongoClient.connect();
   console.log(`Connected to MongoDB, using database: ${db}`);
-  
+
   // Create QueryLeaf instance
   const queryLeaf = new QueryLeaf(mongoClient, db as string);
-  
+
   // Create Express app
   const app = express();
-  
+
   // Middleware
   app.use(cors());
   app.use(morgan('tiny'));
@@ -236,7 +239,7 @@ async function main() {
     })
   );
   app.use(bodyParser.json());
-  
+
   // Rate limiting
   const limiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
@@ -246,20 +249,20 @@ async function main() {
     message: { error: 'Too many requests, please try again later.' },
   });
   app.use('/api/', limiter);
-  
+
   // API routes
   app.post('/api/query', async (req, res) => {
     try {
       const { query } = req.body;
-      
+
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: 'Query parameter is required and must be a string' });
       }
-      
+
       const startTime = Date.now();
       const results = await queryLeaf.execute(query);
       const executionTime = Date.now() - startTime;
-      
+
       res.json({
         results,
         executionTime,
@@ -269,19 +272,22 @@ async function main() {
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
   });
-  
+
   app.get('/api/collections', async (req, res) => {
     try {
-      const collections = await mongoClient.db(db as string).listCollections().toArray();
+      const collections = await mongoClient
+        .db(db as string)
+        .listCollections()
+        .toArray();
       res.json({
-        collections: collections.map(c => c.name),
+        collections: collections.map((c) => c.name),
       });
     } catch (error) {
       console.error('Error listing collections:', error);
       res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
     }
   });
-  
+
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({
@@ -289,7 +295,7 @@ async function main() {
       version: require('../package.json').version,
     });
   });
-  
+
   // Swagger API docs
   // Using a simpler approach instead of swagger-ui-express
   app.get('/api-docs', (req, res) => {
@@ -323,7 +329,7 @@ async function main() {
       </html>
     `);
   });
-  
+
   // Simple HTML UI for testing
   app.get('/', (req, res) => {
     const html = `
@@ -434,13 +440,13 @@ async function main() {
     `;
     res.send(html);
   });
-  
+
   // Start server
   app.listen(port, host as string, () => {
     console.log(`Server running at http://${host}:${port}/`);
     console.log(`API Documentation: http://${host}:${port}/api-docs`);
   });
-  
+
   // Handle graceful shutdown
   process.on('SIGINT', async () => {
     console.log('\nClosing MongoDB connection and shutting down server...');
@@ -451,7 +457,7 @@ async function main() {
 
 // Run the main function if this file is executed directly
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error(`Unhandled error: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   });

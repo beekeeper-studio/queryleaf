@@ -31,17 +31,8 @@ jobs:
       
     - name: Gotta build the lib first for downstream stuff
       run: yarn build:lib
-    - name: Run cli unit tests
-      run: yarn test:cli:unit
-      
-    - name: Run server unit tests
-      run: yarn test:server:unit
-      
-    - name: Run postgres-server unit tests
-      run: yarn test:pg-server:unit
-
-    - name: Run integration tests
-      run: yarn test:integration
+    - name: Run all the tests
+      run: yarn test
       env:
         # This ensures testcontainers can find Docker
         TESTCONTAINERS_HOST_OVERRIDE: "localhost"

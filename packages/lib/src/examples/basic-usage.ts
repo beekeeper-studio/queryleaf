@@ -8,18 +8,18 @@ async function main() {
   // Your existing MongoDB connection
   const connectionString = 'mongodb://localhost:27017';
   const dbName = 'example';
-  
+
   // In a real application, you would already have a MongoDB client
   const mongoClient = new MongoClient(connectionString);
   await mongoClient.connect();
-  
+
   // Create a QueryLeaf instance with your MongoDB client
   const queryLeaf = new QueryLeaf(mongoClient, dbName);
-  
+
   try {
     // Setup sample data with nested structures and arrays
     console.log('\nSetting up sample data with nested structures and arrays...');
-    
+
     await queryLeaf.execute(`
       INSERT INTO users (_id, name, age, email, active, address) VALUES 
       ('101', 'Nested User', 30, 'nested@example.com', true, {
@@ -29,7 +29,7 @@ async function main() {
         "zip": "10001"
       })
     `);
-    
+
     await queryLeaf.execute(`
       INSERT INTO orders (_id, userId, items, total) VALUES 
       ('201', '101', [
@@ -37,59 +37,59 @@ async function main() {
         { "id": "item2", "name": "Mouse", "price": 25 }
       ], 1225)
     `);
-    
+
     // Example SQL queries
     const queries = [
       // Basic SELECT
       'SELECT * FROM users LIMIT 5',
-      
+
       // SELECT with WHERE condition
-      "SELECT name, email FROM users WHERE age > 21 AND active = true",
-      
+      'SELECT name, email FROM users WHERE age > 21 AND active = true',
+
       // SELECT with ORDER BY
       'SELECT * FROM products ORDER BY price DESC LIMIT 3',
-      
+
       // Nested field queries - show accessing address fields
       "SELECT name, address.city, address.zip FROM users WHERE _id = '101'",
-      
+
       // Query with nested field condition
       "SELECT * FROM users WHERE address.city = 'New York'",
-      
+
       // Array element access - query showing array indices
       "SELECT _id, items[0].name, items[0].price FROM orders WHERE _id = '201'",
-      
+
       // Array element condition
-      "SELECT _id, userId FROM orders WHERE items[0].price > 1000",
-      
+      'SELECT _id, userId FROM orders WHERE items[0].price > 1000',
+
       // GROUP BY with aggregation functions
-      "SELECT status, COUNT(*) as count, SUM(total) as total_amount FROM orders GROUP BY status",
-      
+      'SELECT status, COUNT(*) as count, SUM(total) as total_amount FROM orders GROUP BY status',
+
       // JOIN between collections
-      "SELECT u.name, o._id as order_id, o.total FROM users u JOIN orders o ON u._id = o.userId",
-      
+      'SELECT u.name, o._id as order_id, o.total FROM users u JOIN orders o ON u._id = o.userId',
+
       // INSERT example
       "INSERT INTO users (_id, name, age, email, active) VALUES ('100', 'Example User', 25, 'example@example.com', true)",
-      
+
       // SELECT to verify the insertion
       "SELECT * FROM users WHERE _id = '100'",
-      
+
       // UPDATE example
       "UPDATE users SET age = 26 WHERE _id = '100'",
-      
+
       // SELECT to verify the update
       "SELECT * FROM users WHERE _id = '100'",
-      
+
       // DELETE example
       "DELETE FROM users WHERE _id = '100'",
-      
+
       // SELECT to verify the deletion
       "SELECT * FROM users WHERE _id = '100'",
-      
+
       // Clean up sample data
       "DELETE FROM users WHERE _id = '101'",
-      "DELETE FROM orders WHERE _id = '201'"
+      "DELETE FROM orders WHERE _id = '201'",
     ];
-    
+
     // Execute each query and display results
     for (const sql of queries) {
       console.log(`\nExecuting SQL: ${sql}`);
@@ -109,7 +109,7 @@ async function main() {
 
 // Run the example if this file is executed directly
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error('Unhandled error:', error);
     process.exit(1);
   });

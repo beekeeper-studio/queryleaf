@@ -73,37 +73,28 @@ function displayResults(results: any, isJson: boolean, isPretty: boolean) {
       results.forEach((item) => {
         Object.keys(item).forEach((key) => keys.add(key));
       });
-      
+
       const headers = Array.from(keys);
-      
+
       // Calculate column widths (min 10, max 40)
       const columnWidths = headers.map((header) => {
-        const values = results.map((item) => 
+        const values = results.map((item) =>
           item[header] !== undefined ? String(item[header]) : ''
         );
-        
-        const maxWidth = Math.max(
-          header.length,
-          ...values.map((v) => v.length)
-        );
-        
+
+        const maxWidth = Math.max(header.length, ...values.map((v) => v.length));
+
         return Math.min(40, Math.max(10, maxWidth));
       });
-      
+
       // Print headers
       console.log(
-        headers
-          .map((header, i) => chalk.bold(header.padEnd(columnWidths[i])))
-          .join(' | ')
+        headers.map((header, i) => chalk.bold(header.padEnd(columnWidths[i]))).join(' | ')
       );
-      
+
       // Print separator
-      console.log(
-        headers
-          .map((_, i) => '-'.repeat(columnWidths[i]))
-          .join('-+-')
-      );
-      
+      console.log(headers.map((_, i) => '-'.repeat(columnWidths[i])).join('-+-'));
+
       // Print rows
       results.forEach((row) => {
         console.log(
@@ -120,7 +111,7 @@ function displayResults(results: any, isJson: boolean, isPretty: boolean) {
       console.log(results);
     }
   }
-  
+
   // Print record count for arrays
   if (Array.isArray(results)) {
     console.log(chalk.cyan(`\n${results.length} record(s) returned`));
@@ -134,7 +125,7 @@ async function executeQuery(queryLeaf: QueryLeaf, sql: string, isJson: boolean, 
     const startTime = Date.now();
     const results = await queryLeaf.execute(sql);
     const duration = Date.now() - startTime;
-    
+
     displayResults(results, isJson, isPretty);
     console.log(chalk.gray(`\nExecution time: ${duration}ms`));
     return true;
@@ -147,14 +138,14 @@ async function executeQuery(queryLeaf: QueryLeaf, sql: string, isJson: boolean, 
 // Main function
 async function main() {
   const mongoClient = new MongoClient(argv.uri as string);
-  
+
   try {
     console.log(chalk.blue(`Connecting to MongoDB: ${argv.uri}`));
     await mongoClient.connect();
     console.log(chalk.green(`Connected to MongoDB, using database: ${argv.db}`));
-    
+
     const queryLeaf = new QueryLeaf(mongoClient, argv.db as string);
-    
+
     // Execute from file
     if (argv.file) {
       const filePath = path.resolve(process.cwd(), argv.file as string);
@@ -162,24 +153,25 @@ async function main() {
         console.error(chalk.red(`File not found: ${filePath}`));
         process.exit(1);
       }
-      
+
       console.log(chalk.blue(`Executing SQL from file: ${filePath}`));
       const sqlContent = fs.readFileSync(filePath, 'utf-8');
-      
+
       // Split file content by semicolons to get individual queries
       // Ignore semicolons inside quotes
-      const queries = sqlContent
-        .match(/(?:[^;"']+|"(?:\\"|[^"])*"|'(?:\\'|[^'])*')+/g)
-        ?.map(q => q.trim())
-        .filter(q => q.length > 0) || [];
-      
+      const queries =
+        sqlContent
+          .match(/(?:[^;"']+|"(?:\\"|[^"])*"|'(?:\\'|[^'])*')+/g)
+          ?.map((q) => q.trim())
+          .filter((q) => q.length > 0) || [];
+
       if (queries.length === 0) {
         console.log(chalk.yellow('No queries found in file.'));
         process.exit(0);
       }
-      
+
       console.log(chalk.blue(`Found ${queries.length} queries in file.`));
-      
+
       for (let i = 0; i < queries.length; i++) {
         const query = queries[i];
         console.log(chalk.blue(`\nExecuting query ${i + 1}/${queries.length}:`));
@@ -188,33 +180,40 @@ async function main() {
     }
     // Execute single query
     else if (argv.query) {
-      await executeQuery(queryLeaf, argv.query as string, argv.json as boolean, argv.pretty as boolean);
+      await executeQuery(
+        queryLeaf,
+        argv.query as string,
+        argv.json as boolean,
+        argv.pretty as boolean
+      );
     }
     // Interactive mode
     else if (argv.interactive) {
-      console.log(chalk.blue('Starting interactive SQL shell. Type .help for commands, .exit to quit.'));
+      console.log(
+        chalk.blue('Starting interactive SQL shell. Type .help for commands, .exit to quit.')
+      );
       console.log(chalk.blue('Connected to database: ' + argv.db));
-      
+
       const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
         prompt: 'sql> ',
         terminal: true,
       });
-      
+
       rl.prompt();
-      
+
       let multilineQuery = '';
-      
+
       rl.on('line', async (line) => {
         const trimmedLine = line.trim();
-        
+
         // Handle special commands
         if (trimmedLine === '.exit' || trimmedLine === '.quit') {
           rl.close();
           return;
         }
-        
+
         if (trimmedLine === '.help') {
           console.log(chalk.blue('Available commands:'));
           console.log('  .help     - Show this help message');
@@ -222,49 +221,59 @@ async function main() {
           console.log('  .exit     - Exit the shell');
           console.log('  .quit     - Exit the shell');
           console.log('  .clear    - Clear the current query buffer');
-          console.log('  .json     - Toggle JSON output mode (currently ' + (argv.json ? 'ON' : 'OFF') + ')');
+          console.log(
+            '  .json     - Toggle JSON output mode (currently ' + (argv.json ? 'ON' : 'OFF') + ')'
+          );
           console.log('\nSQL queries can span multiple lines. End with a semicolon to execute.');
           rl.prompt();
           return;
         }
-        
+
         if (trimmedLine === '.tables') {
           try {
-            const collections = await mongoClient.db(argv.db as string).listCollections().toArray();
+            const collections = await mongoClient
+              .db(argv.db as string)
+              .listCollections()
+              .toArray();
             console.log(chalk.blue('Collections in database:'));
-            collections.forEach(collection => {
+            collections.forEach((collection) => {
               console.log(`  ${collection.name}`);
             });
           } catch (error) {
-            console.error(chalk.red(`Error listing collections: ${error instanceof Error ? error.message : String(error)}`));
+            console.error(
+              chalk.red(
+                `Error listing collections: ${error instanceof Error ? error.message : String(error)}`
+              )
+            );
           }
           rl.prompt();
           return;
         }
-        
+
         if (trimmedLine === '.clear') {
           multilineQuery = '';
           console.log(chalk.yellow('Query buffer cleared.'));
           rl.prompt();
           return;
         }
-        
+
         if (trimmedLine === '.json') {
           argv.json = !argv.json;
           console.log(chalk.blue(`JSON output mode: ${argv.json ? 'ON' : 'OFF'}`));
           rl.prompt();
           return;
         }
-        
+
         // Handle SQL query
         multilineQuery += line + ' ';
-        
+
         // Execute on semicolon
         if (trimmedLine.endsWith(';')) {
           const query = multilineQuery.trim();
           multilineQuery = '';
-          
-          if (query.length > 1) {  // Handle empty queries (just ";")
+
+          if (query.length > 1) {
+            // Handle empty queries (just ";")
             await executeQuery(queryLeaf, query, argv.json as boolean, argv.pretty as boolean);
           }
         } else {
@@ -272,18 +281,17 @@ async function main() {
           process.stdout.write('... ');
           return;
         }
-        
+
         rl.prompt();
       });
-      
+
       rl.on('close', () => {
         console.log(chalk.blue('\nGoodbye!'));
         process.exit(0);
       });
-      
+
       return; // Keep process running for interactive mode
-    }
-    else {
+    } else {
       console.log(chalk.yellow('No query or file specified and not in interactive mode.'));
       console.log(chalk.yellow('Use --help to see available options.'));
     }
@@ -300,8 +308,10 @@ async function main() {
 
 // Run the main function
 if (require.main === module) {
-  main().catch(error => {
-    console.error(chalk.red(`Unhandled error: ${error instanceof Error ? error.message : String(error)}`));
+  main().catch((error) => {
+    console.error(
+      chalk.red(`Unhandled error: ${error instanceof Error ? error.message : String(error)}`)
+    );
     process.exit(1);
   });
 }

@@ -42,7 +42,10 @@ class DummyCollection {
    * @returns A chainable cursor
    */
   find(filter: any = {}) {
-    console.log(`[DUMMY MongoDB] FIND in ${this.dbName}.${this.name} with filter:`, JSON.stringify(filter, null, 2));
+    console.log(
+      `[DUMMY MongoDB] FIND in ${this.dbName}.${this.name} with filter:`,
+      JSON.stringify(filter, null, 2)
+    );
     return new DummyCursor(this.name, 'find', filter);
   }
 
@@ -52,11 +55,14 @@ class DummyCollection {
    * @returns A dummy result
    */
   async insertMany(documents: any[]) {
-    console.log(`[DUMMY MongoDB] INSERT into ${this.dbName}.${this.name}:`, JSON.stringify(documents, null, 2));
-    return { 
+    console.log(
+      `[DUMMY MongoDB] INSERT into ${this.dbName}.${this.name}:`,
+      JSON.stringify(documents, null, 2)
+    );
+    return {
       acknowledged: true,
       insertedCount: documents.length,
-      insertedIds: documents.map((_, i) => i)
+      insertedIds: documents.map((_, i) => i),
     };
   }
 
@@ -67,14 +73,17 @@ class DummyCollection {
    * @returns A dummy result
    */
   async updateMany(filter: any = {}, update: any) {
-    console.log(`[DUMMY MongoDB] UPDATE in ${this.dbName}.${this.name} with filter:`, JSON.stringify(filter, null, 2));
+    console.log(
+      `[DUMMY MongoDB] UPDATE in ${this.dbName}.${this.name} with filter:`,
+      JSON.stringify(filter, null, 2)
+    );
     console.log(`[DUMMY MongoDB] UPDATE operation:`, JSON.stringify(update, null, 2));
-    return { 
+    return {
       acknowledged: true,
       matchedCount: 1,
       modifiedCount: 1,
       upsertedCount: 0,
-      upsertedId: null
+      upsertedId: null,
     };
   }
 
@@ -84,10 +93,13 @@ class DummyCollection {
    * @returns A dummy result
    */
   async deleteMany(filter: any = {}) {
-    console.log(`[DUMMY MongoDB] DELETE from ${this.dbName}.${this.name} with filter:`, JSON.stringify(filter, null, 2));
-    return { 
+    console.log(
+      `[DUMMY MongoDB] DELETE from ${this.dbName}.${this.name} with filter:`,
+      JSON.stringify(filter, null, 2)
+    );
+    return {
       acknowledged: true,
-      deletedCount: 1
+      deletedCount: 1,
     };
   }
 
@@ -97,7 +109,10 @@ class DummyCollection {
    * @returns A chainable cursor
    */
   aggregate(pipeline: any[]) {
-    console.log(`[DUMMY MongoDB] AGGREGATE in ${this.dbName}.${this.name} with pipeline:`, JSON.stringify(pipeline, null, 2));
+    console.log(
+      `[DUMMY MongoDB] AGGREGATE in ${this.dbName}.${this.name} with pipeline:`,
+      JSON.stringify(pipeline, null, 2)
+    );
     return new DummyCursor(this.name, 'aggregate', null, pipeline);
   }
 }
@@ -115,7 +130,12 @@ class DummyCursor {
   private limitVal: number | null = null;
   private skipVal: number | null = null;
 
-  constructor(collectionName: string, operation: string, filter: any = null, pipeline: any[] | null = null) {
+  constructor(
+    collectionName: string,
+    operation: string,
+    filter: any = null,
+    pipeline: any[] | null = null
+  ) {
     this.collectionName = collectionName;
     this.operation = operation;
     this.filter = filter;
@@ -128,7 +148,10 @@ class DummyCursor {
    * @returns The cursor
    */
   project(projection: any) {
-    console.log(`[DUMMY MongoDB] Adding projection to ${this.operation}:`, JSON.stringify(projection, null, 2));
+    console.log(
+      `[DUMMY MongoDB] Adding projection to ${this.operation}:`,
+      JSON.stringify(projection, null, 2)
+    );
     this.projectionObj = projection;
     return this;
   }
@@ -172,17 +195,20 @@ class DummyCursor {
    */
   async toArray() {
     console.log(`[DUMMY MongoDB] Executing ${this.operation} on ${this.collectionName}`);
-    if (this.projectionObj) console.log(`  - Projection:`, JSON.stringify(this.projectionObj, null, 2));
+    if (this.projectionObj)
+      console.log(`  - Projection:`, JSON.stringify(this.projectionObj, null, 2));
     if (this.sortObj) console.log(`  - Sort:`, JSON.stringify(this.sortObj, null, 2));
     if (this.limitVal !== null && this.limitVal > 0) console.log(`  - Limit:`, this.limitVal);
     if (this.skipVal !== null) console.log(`  - Skip:`, this.skipVal);
-    
+
     // Return a dummy result indicating this is a simulation
-    return [{ 
-      _id: 'dummy-id',
-      operation: this.operation, 
-      message: 'This is a dummy result from the DummyClient' 
-    }];
+    return [
+      {
+        _id: 'dummy-id',
+        operation: this.operation,
+        message: 'This is a dummy result from the DummyClient',
+      },
+    ];
   }
 }
 
@@ -192,7 +218,7 @@ class DummyCursor {
  */
 export class DummyMongoClient extends MongoClient {
   private databases: Map<string, DummyDb> = new Map();
-  
+
   /**
    * Create a new dummy client
    */
@@ -200,7 +226,7 @@ export class DummyMongoClient extends MongoClient {
     // Pass an empty string since we're not actually connecting
     super('mongodb://dummy');
   }
-  
+
   /**
    * Get a dummy database
    * @param dbName Database name
@@ -213,7 +239,7 @@ export class DummyMongoClient extends MongoClient {
     }
     return this.databases.get(dbName) as unknown as Db;
   }
-  
+
   /**
    * Simulate connection - no actual connection is made
    */
@@ -221,7 +247,7 @@ export class DummyMongoClient extends MongoClient {
     console.log('[DUMMY MongoDB] Connected to MongoDB (simulated)');
     return this;
   }
-  
+
   /**
    * Simulate closing the connection
    */

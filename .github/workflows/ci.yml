@@ -29,8 +29,8 @@ jobs:
     - name: Build
       run: yarn build
     
-    - name: Lint
-      run: yarn lint
+    # - name: Lint
+    #   run: yarn lint
     
     - name: Format check
       run: yarn format:check

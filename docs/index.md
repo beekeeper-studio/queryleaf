@@ -455,7 +455,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
           <h3>Developer</h3>
           <div class="pricing-cost">
             <span class="price">$49</span>
-            <span class="price-period">per developer / month</span>
+            <span class="price-period">< 10 developers</span>
           </div>
           <p class="pricing-description">For individual developers and small teams</p>
         </div>
@@ -482,7 +482,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
         <div class="pricing-header">
           <h3>Business</h3>
           <div class="pricing-cost">
-            <span class="price">$99+</span>
+            <span class="price">$99</span>
             <span class="price-period">per month</span>
           </div>
           <p class="pricing-description">For teams and growing businesses</p>

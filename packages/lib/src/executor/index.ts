@@ -41,25 +41,26 @@ export class MongoExecutor implements CommandExecutor {
     // We assume the client is already connected
 
     const database = this.client.db(this.dbName);
-    
+
     // Execute each command in sequence
     let result = null;
     for (const command of commands) {
       switch (command.type) {
         case 'FIND':
-          const findCursor = database.collection(command.collection)
+          const findCursor = database
+            .collection(command.collection)
             .find(this.convertObjectIds(command.filter || {}));
-          
+
           // Apply projection if specified
           if (command.projection) {
             findCursor.project(command.projection);
           }
-          
+
           // Apply sorting if specified
           if (command.sort) {
             findCursor.sort(command.sort);
           }
-          
+
           // Apply pagination if specified
           if (command.skip) {
             findCursor.skip(command.skip);
@@ -67,40 +68,41 @@ export class MongoExecutor implements CommandExecutor {
           if (command.limit && command.limit > 0) {
             findCursor.limit(command.limit);
           }
-          
+
           result = await findCursor.toArray();
           break;
-          
+
         case 'INSERT':
-          result = await database.collection(command.collection)
-            .insertMany(command.documents.map(doc => this.convertObjectIds(doc)));
+          result = await database
+            .collection(command.collection)
+            .insertMany(command.documents.map((doc) => this.convertObjectIds(doc)));
           break;
-          
+
         case 'UPDATE':
-          result = await database.collection(command.collection)
-            .updateMany(
-              this.convertObjectIds(command.filter || {}), 
-              { $set: this.convertObjectIds(command.update) }
-            );
+          result = await database
+            .collection(command.collection)
+            .updateMany(this.convertObjectIds(command.filter || {}), {
+              $set: this.convertObjectIds(command.update),
+            });
           break;
-          
+
         case 'DELETE':
-          result = await database.collection(command.collection)
+          result = await database
+            .collection(command.collection)
             .deleteMany(this.convertObjectIds(command.filter || {}));
           break;
-          
+
         case 'AGGREGATE':
           // Handle aggregation commands
-          const pipeline = command.pipeline.map(stage => this.convertObjectIds(stage));
-          result = await database.collection(command.collection)
-            .aggregate(pipeline).toArray();
+          const pipeline = command.pipeline.map((stage) => this.convertObjectIds(stage));
+          result = await database.collection(command.collection).aggregate(pipeline).toArray();
           break;
-          
+
         default:
           throw new Error(`Unsupported command type: ${(command as any).type}`);
       }
     }
-    
+
     return result;
   }
 
@@ -111,17 +113,20 @@ export class MongoExecutor implements CommandExecutor {
    */
   private convertObjectIds(obj: any): any {
     if (!obj) return obj;
-    
+
     if (Array.isArray(obj)) {
-      return obj.map(item => this.convertObjectIds(item));
+      return obj.map((item) => this.convertObjectIds(item));
     }
-    
+
     if (typeof obj === 'object') {
       const result: Record<string, any> = {};
-      
+
       for (const [key, value] of Object.entries(obj)) {
         // Special handling for _id field and fields ending with Id
-        if ((key === '_id' || key.endsWith('Id') || key.endsWith('Ids')) && typeof value === 'string') {
+        if (
+          (key === '_id' || key.endsWith('Id') || key.endsWith('Ids')) &&
+          typeof value === 'string'
+        ) {
           try {
             // Check if it's a valid ObjectId string
             if (/^[0-9a-fA-F]{24}$/.test(value)) {
@@ -150,14 +155,14 @@ export class MongoExecutor implements CommandExecutor {
           result[key] = this.convertObjectIds(value);
           continue;
         }
-        
+
         // Copy other values as is
         result[key] = value;
       }
-      
+
       return result;
     }
-    
+
     return obj;
   }
 }

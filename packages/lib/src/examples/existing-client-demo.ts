@@ -47,19 +47,16 @@ async function main() {
     await app.initialize();
 
     // Create QueryLeaf using your application's MongoDB client directly
-    const queryLeaf = new QueryLeaf(
-      app.getMongoClient(),
-      'example_db'
-    );
+    const queryLeaf = new QueryLeaf(app.getMongoClient(), 'example_db');
 
     console.log('\nExecuting SQL query using your existing MongoDB client:');
-    
+
     // Example: Create a test collection
     const createQuery = `
       INSERT INTO test_collection (name, value) VALUES 
       ('Example', 42)
     `;
-    
+
     console.log(`\nExecuting SQL: ${createQuery}`);
     const createResult = await queryLeaf.execute(createQuery);
     console.log('Result:', JSON.stringify(createResult, null, 2));
@@ -78,7 +75,6 @@ async function main() {
 
     // You can close QueryLeaf, but it won't close your MongoDB client
     await queryLeaf.close();
-    
   } finally {
     // Your application manages the MongoDB client lifecycle
     await app.shutdown();
@@ -87,7 +83,7 @@ async function main() {
 
 // Run the example
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error('Error:', error);
     process.exit(1);
   });

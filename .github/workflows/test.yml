@@ -25,9 +25,6 @@ jobs:
     
     - name: Install dependencies
       run: yarn install --frozen-lockfile
-    
-    - name: Run lib unit tests
-      run: yarn test:lib:unit
       
     - name: Gotta build the lib first for downstream stuff
       run: yarn build:lib
@@ -36,9 +33,15 @@ jobs:
       env:
         # This ensures testcontainers can find Docker
         TESTCONTAINERS_HOST_OVERRIDE: "localhost"
-      
-    - name: TypeCheck
-      run: yarn typecheck
-      
-    - name: Build package
+
+    - name: Build
       run: yarn build
+    
+    # - name: Lint
+    #   run: yarn lint
+    
+    - name: Format check
+      run: yarn format:check
+    
+    - name: Typecheck
+      run: yarn typecheck

@@ -10,9 +10,11 @@
     "typecheck": "npx tsc --noEmit",
     "dev": "ts-node src/index.ts",
     "example": "ts-node src/examples/basic-usage.ts",
-    "test": "jest",
+    "test": "yarn test:unit && yarn test:integration",
     "test:unit": "jest tests/unit",
-    "test:integration": "jest tests/integration --runInBand"
+    "test:integration": "jest tests/integration --runInBand",
+    "lint": "eslint --ext .ts src",
+    "lint:fix": "eslint --ext .ts --fix src"
   },
   "keywords": [
     "sql",

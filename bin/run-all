@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# Run a command across all packages in a specific order
+# Usage: bin/run-all <command> [additional args]
+
+set -e
+
+if [ -z "$1" ]; then
+  echo "Usage: bin/run-all <command> [additional args]"
+  echo "Example: bin/run-all test:unit"
+  exit 1
+fi
+
+COMMAND=$1
+shift
+ARGS=$@
+
+# Define package order: lib first, then others
+PACKAGES=("lib" "cli" "server" "postgres-server")
+
+for pkg in "${PACKAGES[@]}"; do
+  echo "========== Running command in @queryleaf/$pkg =========="
+  yarn workspace "@queryleaf/$pkg" run $COMMAND $ARGS
+done
+
+echo "========== All commands completed successfully =========="

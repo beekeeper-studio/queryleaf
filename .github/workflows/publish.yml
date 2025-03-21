@@ -35,12 +35,12 @@ jobs:
       # Update versions in package.json files before publishing
       - name: Update lib package version
         run: |
-          run-all version --new-version $VERSION --no-git-tag-version
-          run-all lockversion
+          bin/run-all version --new-version $VERSION --no-git-tag-version
+          bin/run-all lockversion
 
       # Publish packages in the correct order
       - name: Publish lib package
-        run: yarn run-all publish --access public
+        run: bin/run-all publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

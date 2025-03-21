@@ -107,7 +107,7 @@ Here's a basic project setup with QueryLeaf:
 
 3. Install QueryLeaf and MongoDB client:
    ```bash
-   npm install queryleaf mongodb
+   npm install @queryleaf/lib mongodb
    ```
 
 4. Create a basic file structure:
@@ -123,7 +123,7 @@ Here's a basic project setup with QueryLeaf:
 5. Add a basic usage example in `src/index.js`:
    ```javascript
    const { MongoClient } = require('mongodb');
-   const { QueryLeaf } = require('queryleaf');
+   const { QueryLeaf } = require('@queryleaf/lib');
 
    async function main() {
      // Connect to MongoDB

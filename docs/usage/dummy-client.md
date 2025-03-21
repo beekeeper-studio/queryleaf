@@ -14,7 +14,7 @@ This guide explains how to use the dummy client effectively.
 The `DummyQueryLeaf` class mimics the real `QueryLeaf` but logs operations instead of executing them:
 
 ```typescript
-import { DummyQueryLeaf } from 'queryleaf';
+import { DummyQueryLeaf } from '@queryleaf/lib';
 
 // Create a dummy client (no MongoDB client required)
 const dummyLeaf = new DummyQueryLeaf('mydb');
@@ -30,7 +30,7 @@ await dummyLeaf.execute('SELECT name, email FROM users WHERE age > 21');
 The dummy client is particularly useful for understanding how SQL queries are translated to MongoDB commands:
 
 ```typescript
-import { DummyQueryLeaf } from 'queryleaf';
+import { DummyQueryLeaf } from '@queryleaf/lib';
 
 async function debugSqlTranslation() {
   const dummyLeaf = new DummyQueryLeaf('testdb');
@@ -66,7 +66,7 @@ This will output detailed logs showing how each SQL query is translated to Mongo
 The dummy client is especially useful in unit tests where you want to verify that your application generates the correct SQL queries without actually executing them:
 
 ```typescript
-import { DummyQueryLeaf } from 'queryleaf';
+import { DummyQueryLeaf } from '@queryleaf/lib';
 
 // Mock console.log to capture output
 let consoleOutput: string[] = [];
@@ -126,7 +126,7 @@ This means it validates that your SQL syntax is correct and shows how it would b
 You can extend the `DummyQueryLeaf` class for custom testing scenarios:
 
 ```typescript
-import { DummyQueryLeaf, Command } from 'queryleaf';
+import { DummyQueryLeaf, Command } from '@queryleaf/lib';
 
 class TestingQueryLeaf extends DummyQueryLeaf {
   public commands: Command[] = [];

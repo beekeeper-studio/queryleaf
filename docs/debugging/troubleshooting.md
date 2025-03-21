@@ -22,6 +22,9 @@ This guide provides solutions for common issues you may encounter when using Que
 **Example:**
 
 ```typescript
+// Import from @queryleaf/lib instead of queryleaf
+import { DummyQueryLeaf } from '@queryleaf/lib';
+
 // Use DummyQueryLeaf to debug
 const dummy = new DummyQueryLeaf('debug_db');
 try {
@@ -219,6 +222,9 @@ function log(message) {
 Examine the MongoDB commands being generated:
 
 ```typescript
+// Import from @queryleaf/lib
+import { DummyQueryLeaf } from '@queryleaf/lib';
+
 // Using DummyQueryLeaf
 const dummy = new DummyQueryLeaf('debug_db');
 console.log('Translating SQL to MongoDB commands...');
@@ -415,6 +421,9 @@ SELECT name, COALESCE(email, 'No Email') as contact FROM users
 For complex GROUP BY operations:
 
 ```typescript
+// Import from @queryleaf/lib
+import { DummyQueryLeaf } from '@queryleaf/lib';
+
 // Break down the aggregation into stages
 const dummy = new DummyQueryLeaf('debug_db');
 

@@ -133,7 +133,7 @@ db.collection('users').aggregate([
 ## Installation
 
 ```bash
-npm install queryleaf
+npm install @queryleaf/lib
 ```
 
 ## Usage
@@ -141,7 +141,7 @@ npm install queryleaf
 QueryLeaf takes your existing MongoDB client. It never creates or manages MongoDB connections on its own.
 
 ```typescript
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 import { MongoClient } from 'mongodb';
 
 // Your existing MongoDB client
@@ -165,7 +165,7 @@ await mongoClient.close();
 For testing or debugging without a real database, use DummyQueryLeaf:
 
 ```typescript
-import { DummyQueryLeaf } from 'queryleaf';
+import { DummyQueryLeaf } from '@queryleaf/lib';
 
 // Create a DummyQueryLeaf instance for testing
 const queryLeaf = new DummyQueryLeaf('mydatabase');

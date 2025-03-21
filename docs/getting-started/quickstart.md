@@ -8,7 +8,7 @@ Here's a simple example showing how to use QueryLeaf with an existing MongoDB cl
 
 ```typescript
 import { MongoClient } from 'mongodb';
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 
 async function runQueries() {
   // Connect to MongoDB
@@ -60,7 +60,7 @@ QueryLeaf is written in TypeScript and provides full type definitions. Here's ho
 
 ```typescript
 import { MongoClient } from 'mongodb';
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 
 interface User {
   _id: string;
@@ -97,7 +97,7 @@ getUsers()
 For testing or development without a real MongoDB instance, you can use the `DummyQueryLeaf` class:
 
 ```typescript
-import { DummyQueryLeaf } from 'queryleaf';
+import { DummyQueryLeaf } from '@queryleaf/lib';
 
 async function testQueries() {
   // Create a dummy client that logs operations without executing them

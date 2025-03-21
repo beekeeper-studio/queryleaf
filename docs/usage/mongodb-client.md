@@ -67,7 +67,7 @@ Here's a complete example with proper connection management:
 
 ```typescript
 import { MongoClient } from 'mongodb';
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 
 async function main() {
   const client = new MongoClient('mongodb://localhost:27017');
@@ -177,7 +177,7 @@ Implement proper error handling for MongoDB connection issues:
 
 ```typescript
 import { MongoClient, MongoServerError } from 'mongodb';
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 
 async function executeWithRetry(sqlQuery: string, maxRetries = 3) {
   const client = new MongoClient('mongodb://localhost:27017');

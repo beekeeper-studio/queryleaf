@@ -26,8 +26,8 @@
   "author": "",
   "license": "AGPL-3.0",
   "dependencies": {
-    "node-sql-parser": "^4.11.0",
-    "debug": "^4.4.0"
+    "debug": "^4.4.0",
+    "node-sql-parser": "^4.11.0"
   },
   "peerDependencies": {
     "mongodb": "^6.14.2"

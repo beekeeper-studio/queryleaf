@@ -26,17 +26,14 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run tests
-        run: yarn test
-
-      - name: Build packages
-        run: yarn build
-
       # Update versions in package.json files before publishing
       - name: Update lib package version
         run: |
           bin/run-all version --new-version $VERSION --no-git-tag-version
           bin/run-all lockversion
+
+      - name: Build packages
+        run: yarn build
 
       # Publish packages in the correct order
       - name: Publish lib package

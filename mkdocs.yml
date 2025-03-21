@@ -54,7 +54,6 @@ nav:
     - sql-syntax/array-access.md
     - sql-syntax/joins.md
     - sql-syntax/group-by.md
-  - Pricing: index.md#pricing
   - Support:
     - Pricing & Licensing: support/pricing.md
     - License FAQ: support/license-faq.md

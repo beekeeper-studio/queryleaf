@@ -15,7 +15,8 @@
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration --runInBand",
     "lint": "eslint --ext .ts src",
-    "lint:fix": "eslint --ext .ts --fix src"
+    "lint:fix": "eslint --ext .ts --fix src",
+    "lockversion": "sed -i -E \"s|(\\\"@queryleaf/lib\\\"\\s*:\\s*\\\")[^\"]+(\\\"?)|\\1$VERSION\\2|\" package.json"
   },
   "keywords": [
     "sql",
@@ -27,7 +28,7 @@
   "author": "",
   "license": "AGPL-3.0",
   "dependencies": {
-    "@queryleaf/lib": "0.1.0",
+    "@queryleaf/lib": "^0.0.0",
     "chalk": "^4.1.2",
     "mongodb": "^6.14.2",
     "yargs": "^17.7.2"

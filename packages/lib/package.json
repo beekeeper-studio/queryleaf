@@ -14,7 +14,8 @@
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration --runInBand",
     "lint": "eslint --ext .ts src",
-    "lint:fix": "eslint --ext .ts --fix src"
+    "lint:fix": "eslint --ext .ts --fix src",
+    "lockversion": "echo \"Skipping for lib\""
   },
   "keywords": [
     "sql",

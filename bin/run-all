@@ -20,7 +20,7 @@ PACKAGES=("lib" "cli" "server" "postgres-server")
 
 for pkg in "${PACKAGES[@]}"; do
   echo "========== Running command in @queryleaf/$pkg =========="
-  yarn workspace "@queryleaf/$pkg" run $COMMAND $ARGS
+  yarn workspace "@queryleaf/$pkg" $COMMAND $ARGS
 done
 
 echo "========== All commands completed successfully =========="

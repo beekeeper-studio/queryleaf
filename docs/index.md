@@ -452,27 +452,26 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
     <div class="pricing-tiers">
       <div class="pricing-card">
         <div class="pricing-header">
-          <h3>Developer</h3>
+          <h3>Professional</h3>
           <div class="pricing-cost">
-            <span class="price">$49</span>
-            <span class="price-period">< 10 developers</span>
+            <span class="price">$98</span>
+            <span class="price-period">$995/yr</span>
           </div>
-          <p class="pricing-description">For individual developers and small teams</p>
+          <p class="pricing-description">Up to 10 developers</p>
         </div>
         
         <div class="pricing-features">
           <ul>
-            <li>Full feature set</li>
-            <li>Commercial license</li>
+            <li>Commercial usage license</li>
+            <li>All features & packages</li>
             <li>Email support</li>
-            <li>All packages included (Library, CLI, Web Server, PostgreSQL Server)</li>
-            <li>Use in proprietary applications</li>
-            <li>No AGPL requirements</li>
+            <li>Use in internal applications only</li>
+            <li>Up to 2 MongoDB Servers</li>
           </ul>
         </div>
         
         <div class="pricing-footer">
-          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Developer License" class="md-button">
+          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Professional License" class="md-button">
             Purchase License
           </a>
         </div>
@@ -482,20 +481,19 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
         <div class="pricing-header">
           <h3>Business</h3>
           <div class="pricing-cost">
-            <span class="price">$99</span>
-            <span class="price-period">per month</span>
+            <span class="price">$199</span>
+            <span class="price-period">$1995/yr</span>
           </div>
-          <p class="pricing-description">For teams and growing businesses</p>
+          <p class="pricing-description">Up to 50 developers</p>
         </div>
         
         <div class="pricing-features">
           <ul>
-            <li>Everything in Developer tier</li>
-            <li>Unlimited developers</li>
+            <li>Everything in Professional tier</li>
+            <li>More users</li>
             <li>Priority email support</li>
-            <li>Quarterly reviews</li>
-            <li>Performance optimization</li>
-            <li>Extended security updates</li>
+            <li>Use in external SaaS applications</li>
+            <li>Up to 5 MongoDB Servers</li>
           </ul>
         </div>
         
@@ -513,17 +511,16 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
             <span class="price">Contact</span>
             <span class="price-period">custom pricing</span>
           </div>
-          <p class="pricing-description">For organizations needing dedicated support and custom features</p>
+          <p class="pricing-description">For large organizations and OEM licensing</p>
         </div>
         
         <div class="pricing-features">
           <ul>
             <li>Everything in Business tier</li>
-            <li>Dedicated account manager</li>
-            <li>Priority support with SLA</li>
-            <li>Custom development available</li>
-            <li>Deployment assistance</li>
-            <li>Training and onboarding</li>
+            <li>Use in OEM applications</li>
+            <li>Unlimited MongoDB Servers</li>
+            <li>Commercial source license</li>
+            <li>Credit card or invoice payment</li>
           </ul>
         </div>
         
@@ -545,7 +542,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
           </div>
         </div>
         <p class="community-description">
-          For open source projects, individual developers, and learning
+          Free for personal use, trial under commercial license, or free forever under AGPL
         </p>
         <div class="community-features">
           <ul>
@@ -834,3 +831,25 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
     </div>
   </div>
 </div>
+
+<div class="footer-copyright">
+  <div class="container">
+    <p>© 2023-2025 Beekeeper Studio, Inc. All rights reserved.</p>
+  </div>
+</div>
+
+<style>
+.footer-copyright {
+  background-color: #f5f5f5;
+  padding: 20px 0;
+  margin-top: 60px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.footer-copyright p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+</style>

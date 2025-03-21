@@ -69,4 +69,12 @@ LIMIT 5</code></pre>
 </section>
 {% endblock %}
 {% block content %}{% endblock %}
-{% block footer %}{% endblock %}
+{% block footer %}
+<footer class="md-footer">
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      {% include "partials/footer.html" %}
+    </div>
+  </div>
+</footer>
+{% endblock %}

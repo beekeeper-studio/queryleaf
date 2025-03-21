@@ -54,6 +54,7 @@ nav:
     - sql-syntax/array-access.md
     - sql-syntax/joins.md
     - sql-syntax/group-by.md
+  - Pricing: index.md#pricing
   - Support:
     - Pricing & Licensing: support/pricing.md
     - License FAQ: support/license-faq.md
@@ -89,4 +90,4 @@ extra_css:
   - stylesheets/extra.css
   - stylesheets/home.css
 
-copyright: Copyright &copy; 2023-2025 Beekeeper Studio Ltd.
+copyright: Copyright &copy; 2023-2025

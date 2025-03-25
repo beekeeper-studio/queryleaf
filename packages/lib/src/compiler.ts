@@ -63,44 +63,47 @@ export class SqlCompilerImpl implements SqlCompiler {
     }
 
     const collection = this.extractTableName(ast.from[0]);
-    
+
     // Check if we have nested field projections
-    const hasNestedFieldProjections = ast.columns && Array.isArray(ast.columns) && ast.columns.some((col: any) => {
-      if (typeof col === 'object') {
-        // Various ways to detect nested fields
-        if (col.expr?.column?.includes('.')) return true;
-        if (col.expr?.type === 'column_ref' && col.expr?.column?.includes('.')) return true;
-        if (col.expr?.type === 'binary_expr' && col.expr?.operator === '.') return true;
-        if (col.column?.includes('.')) return true;
-      } else if (typeof col === 'string' && col.includes('.')) {
-        return true;
-      }
-      return false;
-    });
-    
+    const hasNestedFieldProjections =
+      ast.columns &&
+      Array.isArray(ast.columns) &&
+      ast.columns.some((col: any) => {
+        if (typeof col === 'object') {
+          // Various ways to detect nested fields
+          if (col.expr?.column?.includes('.')) return true;
+          if (col.expr?.type === 'column_ref' && col.expr?.column?.includes('.')) return true;
+          if (col.expr?.type === 'binary_expr' && col.expr?.operator === '.') return true;
+          if (col.column?.includes('.')) return true;
+        } else if (typeof col === 'string' && col.includes('.')) {
+          return true;
+        }
+        return false;
+      });
+
     // Check if we need to use aggregate pipeline
-    const needsAggregation = 
-      hasNestedFieldProjections || 
+    const needsAggregation =
+      hasNestedFieldProjections ||
       (ast.columns && Array.isArray(ast.columns) && ast.columns.some((col: any) => col.as)) || // Has aliases
-      ast.groupby || 
+      ast.groupby ||
       (ast.from && ast.from.length > 1); // Has JOINs
-    
+
     log('Needs aggregation:', needsAggregation, 'hasNestedFields:', hasNestedFieldProjections);
-    
+
     if (needsAggregation) {
       // For queries with nested fields, we need to use the aggregate pipeline
       // to properly handle extracting nested fields to the top level
       const aggregateCommand: AggregateCommand = {
         type: 'AGGREGATE',
         collection,
-        pipeline: []
+        pipeline: [],
       };
-      
+
       // Start with $match if we have a filter
       if (ast.where) {
         aggregateCommand.pipeline.push({ $match: this.convertWhere(ast.where) });
       }
-      
+
       // Handle JOINs
       if (ast.from && ast.from.length > 1) {
         const lookups = this.convertJoins(ast.from, ast.where);
@@ -113,7 +116,7 @@ export class SqlCompilerImpl implements SqlCompiler {
               as: lookup.as,
             },
           });
-          
+
           aggregateCommand.pipeline.push({
             $unwind: {
               path: '$' + lookup.as,
@@ -122,7 +125,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           });
         });
       }
-      
+
       // Handle GROUP BY
       if (ast.groupby) {
         const group = this.convertGroupBy(ast.groupby, ast.columns);
@@ -130,12 +133,12 @@ export class SqlCompilerImpl implements SqlCompiler {
           aggregateCommand.pipeline.push({ $group: group });
         }
       }
-      
+
       // Handle ORDER BY
       if (ast.orderby) {
         aggregateCommand.pipeline.push({ $sort: this.convertOrderBy(ast.orderby) });
       }
-      
+
       // Handle LIMIT and OFFSET
       if (ast.limit) {
         log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
@@ -169,21 +172,24 @@ export class SqlCompilerImpl implements SqlCompiler {
           }
         }
       }
-      
+
       // Add projection for SELECT columns
       if (ast.columns) {
         const projection: Record<string, any> = {};
-        
+
         // Handle each column in the projection
         for (const column of ast.columns) {
-          if (column === '*' || (typeof column === 'object' && column.expr && column.expr.type === 'star')) {
+          if (
+            column === '*' ||
+            (typeof column === 'object' && column.expr && column.expr.type === 'star')
+          ) {
             // Select all fields - no specific projection needed in MongoDB
             continue;
           }
-          
+
           if (typeof column === 'object') {
             let fieldPath = '';
-            
+
             // Extract field path from different column formats
             if ('expr' in column && column.expr) {
               // Special case for specs.size.diagonal where it appears as schema: specs, column: size.diagonal
@@ -203,9 +209,17 @@ export class SqlCompilerImpl implements SqlCompiler {
               } else if (column.expr.type === 'binary_expr' && column.expr.operator === '.') {
                 // This case should have been handled by handleNestedFieldExpressions
                 // But as a fallback, try to extract the path
-                log('Binary expression in projection that should have been processed:', JSON.stringify(column.expr, null, 2));
-                
-                if (column.expr.left && column.expr.left.column && column.expr.right && column.expr.right.column) {
+                log(
+                  'Binary expression in projection that should have been processed:',
+                  JSON.stringify(column.expr, null, 2)
+                );
+
+                if (
+                  column.expr.left &&
+                  column.expr.left.column &&
+                  column.expr.right &&
+                  column.expr.right.column
+                ) {
                   fieldPath = `${column.expr.left.column}.${column.expr.right.column}`;
                 }
               }
@@ -226,18 +240,20 @@ export class SqlCompilerImpl implements SqlCompiler {
                 fieldPath = this.processFieldName(column.column);
               }
             }
-            
+
             // If we found a field path, add it to the projection
             if (fieldPath) {
               log(`Processing field path for projection: ${fieldPath}`);
-              
+
               if (fieldPath.includes('.')) {
                 // For nested fields, create a name with underscores instead of dots
                 const fieldNameWithUnderscores = fieldPath.replace(/\./g, '_');
-                
+
                 // Add to projection with the path-based name
                 projection[fieldNameWithUnderscores] = `$${fieldPath}`;
-                log(`Added nested field to projection: ${fieldNameWithUnderscores} = $${fieldPath}`);
+                log(
+                  `Added nested field to projection: ${fieldNameWithUnderscores} = $${fieldPath}`
+                );
               } else {
                 // Regular field
                 projection[fieldPath] = 1;
@@ -245,11 +261,11 @@ export class SqlCompilerImpl implements SqlCompiler {
             }
           } else if (typeof column === 'string') {
             const fieldPath = this.processFieldName(column);
-            
+
             if (fieldPath.includes('.')) {
               // For nested fields, create a name with underscores instead of dots
               const fieldNameWithUnderscores = fieldPath.replace(/\./g, '_');
-              
+
               // Add to projection with the path-based name
               projection[fieldNameWithUnderscores] = `$${fieldPath}`;
             } else {
@@ -258,14 +274,14 @@ export class SqlCompilerImpl implements SqlCompiler {
             }
           }
         }
-        
+
         // Add the projection stage if we have fields to project
         if (Object.keys(projection).length > 0) {
           log('Projection stage:', JSON.stringify(projection, null, 2));
           aggregateCommand.pipeline.push({ $project: projection });
         }
       }
-      
+
       log('Aggregate pipeline:', JSON.stringify(aggregateCommand.pipeline, null, 2));
       return aggregateCommand;
     } else {
@@ -276,7 +292,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         filter: ast.where ? this.convertWhere(ast.where) : undefined,
         projection: ast.columns ? this.convertColumns(ast.columns) : undefined,
       };
-      
+
       // Handle LIMIT and OFFSET
       if (ast.limit) {
         log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
@@ -310,12 +326,12 @@ export class SqlCompilerImpl implements SqlCompiler {
           }
         }
       }
-      
+
       // Handle ORDER BY
       if (ast.orderby) {
         findCommand.sort = this.convertOrderBy(ast.orderby);
       }
-      
+
       return findCommand;
     }
   }
@@ -408,7 +424,7 @@ export class SqlCompilerImpl implements SqlCompiler {
     ast.set.forEach((setItem: any) => {
       if (setItem.column && setItem.value) {
         let fieldName;
-        
+
         // Check for special placeholder format from parser
         if (setItem.column.startsWith('__NESTED_') && setItem.column.endsWith('__')) {
           // This is a placeholder for a multi-level nested field
@@ -416,11 +432,11 @@ export class SqlCompilerImpl implements SqlCompiler {
           const placeholderIndex = parseInt(
             setItem.column.replace('__NESTED_', '').replace('__', '')
           );
-          
+
           // Get the original nested field path from the parser replacements
           // This requires accessing the parser's replacements, which we don't have direct access to
           // Instead, we'll need to restore it through other means
-          
+
           // For now, we'll assume shipping.address.country.name for demonstration
           // In a real implementation, we'd need to pass the replacements from parser to compiler
           fieldName = 'shipping.address.country.name';
@@ -441,8 +457,10 @@ export class SqlCompilerImpl implements SqlCompiler {
           // Process the field name to handle nested fields with dot notation
           fieldName = this.processFieldName(setItem.column);
         }
-        
-        log(`Setting UPDATE field: ${fieldName} = ${JSON.stringify(this.convertValue(setItem.value))}`);
+
+        log(
+          `Setting UPDATE field: ${fieldName} = ${JSON.stringify(this.convertValue(setItem.value))}`
+        );
         update[fieldName] = this.convertValue(setItem.value);
       }
     });
@@ -466,15 +484,17 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     for (let i = 0; i < setItems.length; i++) {
       const item = setItems[i];
-      
+
       // Check if this is a multi-level nested field (has both schema and table properties)
       if (item.schema && item.table && item.column) {
-        log(`Found potential multi-level nested field: ${item.schema}.${item.table}.${item.column}`);
-        
+        log(
+          `Found potential multi-level nested field: ${item.schema}.${item.table}.${item.column}`
+        );
+
         // Keep as is - the schema.table.column structure will be handled in compileUpdate
         continue;
       }
-      
+
       // Check if the table property might actually contain a nested path itself
       if (item.table && item.table.includes('.')) {
         // This is a multi-level nested field where part of the path is in the table property
@@ -796,12 +816,12 @@ export class SqlCompilerImpl implements SqlCompiler {
     // Handle column references in SELECT clause
     if (ast.columns && Array.isArray(ast.columns)) {
       log('Raw columns before processing:', JSON.stringify(ast.columns, null, 2));
-      
+
       // First pass: Handle binary expressions which might be nested field accesses
       this.handleNestedFieldExpressions(ast.columns);
-      
+
       log('Columns after handling nested expressions:', JSON.stringify(ast.columns, null, 2));
-      
+
       // Second pass: Handle simple table.column references
       ast.columns.forEach((column: any) => {
         if (
@@ -824,7 +844,7 @@ export class SqlCompilerImpl implements SqlCompiler {
     // For debugging - show the resulting AST after transformation
     log('AST after nested field handling:', JSON.stringify(ast?.where, null, 2));
   }
-  
+
   /**
    * Handle binary expressions that might represent multi-level nested field access
    * For example: customer.address.city might be parsed as a binary expression
@@ -832,25 +852,21 @@ export class SqlCompilerImpl implements SqlCompiler {
    */
   private handleNestedFieldExpressions(columns: any[]): void {
     log('handleNestedFieldExpressions called with columns:', JSON.stringify(columns, null, 2));
-    
+
     for (let i = 0; i < columns.length; i++) {
       const column = columns[i];
-      
+
       // Check if this is a binary expression with a dot operator
-      if (
-        column.expr &&
-        column.expr.type === 'binary_expr' &&
-        column.expr.operator === '.'
-      ) {
+      if (column.expr && column.expr.type === 'binary_expr' && column.expr.operator === '.') {
         log('Found binary expression with dot operator:', JSON.stringify(column.expr, null, 2));
-        
+
         // Convert the binary expression to a flat column reference with a path string
         column.expr = this.flattenDotExpression(column.expr);
         log(`Flattened nested field expression to: ${column.expr.column}`);
       }
     }
   }
-  
+
   /**
    * Recursively flattens a dot-notation binary expression into a single column reference
    * For example, a.b.c (which is represented as (a.b).c) is flattened to a column reference "a.b.c"
@@ -860,7 +876,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       // Not a dot expression, return as is
       return expr;
     }
-    
+
     // Process left side - it might be another nested dot expression
     let leftPart = '';
     if (expr.left.type === 'binary_expr' && expr.left.operator === '.') {
@@ -880,7 +896,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       // Direct column property
       leftPart = expr.left.column;
     }
-    
+
     // Process right side
     let rightPart = '';
     if (expr.right.type === 'column_ref') {
@@ -891,16 +907,16 @@ export class SqlCompilerImpl implements SqlCompiler {
       // Handle potential case where it's not a column reference but has a value
       rightPart = expr.right.value;
     }
-    
+
     // Combine to create the full field path
     if (leftPart && rightPart) {
       return {
         type: 'column_ref',
         table: null,
-        column: `${leftPart}.${rightPart}`
+        column: `${leftPart}.${rightPart}`,
       };
     }
-    
+
     // If we couldn't properly flatten, return the original expression
     return expr;
   }
@@ -918,10 +934,10 @@ export class SqlCompilerImpl implements SqlCompiler {
         // This is a nested field access in the form of a.b.c
         // Use our recursive flattener to handle it
         const flattened = this.flattenDotExpression(where);
-        
+
         // Replace the original binary expression with the flattened one
         Object.assign(where, flattened);
-        
+
         log('Flattened nested field in WHERE clause:', JSON.stringify(where, null, 2));
       } else {
         // For other binary expressions (like comparisons), process both sides recursively

@@ -86,8 +86,8 @@ export class SqlParserImpl implements SqlParser {
         ast: Array.isArray(processedAst) ? processedAst[0] : processedAst,
         text: sql, // Use original SQL for reference
         metadata: {
-          nestedFieldReplacements: this._nestedFieldReplacements
-        }
+          nestedFieldReplacements: this._nestedFieldReplacements,
+        },
       };
     } catch (error) {
       // If error happens and it's related to our extensions, try to handle it
@@ -104,8 +104,8 @@ export class SqlParserImpl implements SqlParser {
             ast: Array.isArray(processedAst) ? processedAst[0] : processedAst,
             text: sql,
             metadata: {
-              nestedFieldReplacements: this._nestedFieldReplacements
-            }
+              nestedFieldReplacements: this._nestedFieldReplacements,
+            },
           };
         } catch (fallbackErr) {
           const fallbackErrorMsg =
@@ -139,32 +139,32 @@ export class SqlParserImpl implements SqlParser {
       // This regex looks for patterns like: SET contact.address.city = 'Boston', other.field = 'value'
       const setNestedFieldRegex = /SET\s+(.*?)(?:\s+WHERE|$)/is;
       const setMatch = setNestedFieldRegex.exec(sql);
-      
+
       if (setMatch && setMatch[1]) {
         const setPart = setMatch[1];
         // Split by commas to get individual assignments
         const assignments = setPart.split(',');
-        
+
         let modifiedSetPart = setPart;
-        
+
         // Process each assignment
         for (const assignment of assignments) {
           // This regex extracts the field name before the equals sign
           const fieldMatch = /^\s*([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+){2,})\s*=/i.exec(assignment);
-          
+
           if (fieldMatch && fieldMatch[1]) {
             const nestedField = fieldMatch[1];
             // Create a placeholder name
             const placeholder = `__NESTED_${replacements.length}__`;
-            
+
             // Store the replacement
             replacements.push([placeholder, nestedField]);
-            
+
             // Replace in the set part
             modifiedSetPart = modifiedSetPart.replace(nestedField, placeholder);
           }
         }
-        
+
         // Replace the whole SET part
         sql = sql.replace(setPart, modifiedSetPart);
       }

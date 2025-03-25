@@ -81,7 +81,8 @@ export class MongoExecutor implements CommandExecutor {
         case 'UPDATE':
           result = await database
             .collection(command.collection)
-            .updateMany(this.convertObjectIds(command.filter || {}), 
+            .updateMany(
+              this.convertObjectIds(command.filter || {}),
               this.convertObjectIds(command.update)
             );
           break;

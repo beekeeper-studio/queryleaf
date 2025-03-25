@@ -1,4 +1,4 @@
-import { CommandExecutor, Command } from '../interfaces';
+import { CommandExecutor, Command, ExecutionOptions } from '../interfaces';
 import { MongoClient, ObjectId } from 'mongodb';
 
 /**
@@ -35,12 +35,14 @@ export class MongoExecutor implements CommandExecutor {
   /**
    * Execute a series of MongoDB commands
    * @param commands Array of commands to execute
+   * @param options Execution options
    * @returns Result of the last command
    */
-  async execute(commands: Command[]): Promise<any> {
+  async execute(commands: Command[], options?: ExecutionOptions): Promise<any> {
     // We assume the client is already connected
 
     const database = this.client.db(this.dbName);
+    const returnCursor = options?.returnCursor || false;
 
     // Execute each command in sequence
     let result = null;
@@ -69,7 +71,8 @@ export class MongoExecutor implements CommandExecutor {
             findCursor.limit(command.limit);
           }
 
-          result = await findCursor.toArray();
+          // Return cursor or array based on options
+          result = returnCursor ? findCursor : await findCursor.toArray();
           break;
 
         case 'INSERT':
@@ -95,7 +98,10 @@ export class MongoExecutor implements CommandExecutor {
         case 'AGGREGATE':
           // Handle aggregation commands
           const pipeline = command.pipeline.map((stage) => this.convertObjectIds(stage));
-          result = await database.collection(command.collection).aggregate(pipeline).toArray();
+          const aggregateCursor = database.collection(command.collection).aggregate(pipeline);
+          
+          // Return cursor or array based on options
+          result = returnCursor ? aggregateCursor : await aggregateCursor.toArray();
           break;
 
         default:

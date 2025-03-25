@@ -21,6 +21,7 @@
   - Array element access (e.g., `items[0].name`)
   - GROUP BY with aggregation functions (COUNT, SUM, AVG, MIN, MAX)
   - JOINs between collections
+  - Option to return MongoDB cursor for fine-grained result processing
 
 ## Installation
 
@@ -47,6 +48,13 @@ const queryLeaf = new QueryLeaf(mongoClient, 'mydatabase');
 const results = await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
 console.log(results);
 
+// Get a MongoDB cursor for more control over result processing
+const cursor = await queryLeaf.execute('SELECT * FROM users WHERE age > 30', { returnCursor: true });
+await cursor.forEach((doc) => {
+  console.log(`User: ${doc.name}`);
+});
+await cursor.close();
+
 // When you're done, close your MongoDB client
 await mongoClient.close();
 ```
@@ -64,6 +72,13 @@ const queryLeaf = new DummyQueryLeaf('mydatabase');
 // Operations will be logged to console but not executed
 await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
 // [DUMMY MongoDB] FIND in mydatabase.users with filter: { "age": { "$gt": 21 } }
+
+// You can also use the cursor option with DummyQueryLeaf
+const cursor = await queryLeaf.execute('SELECT * FROM users LIMIT 10', { returnCursor: true });
+await cursor.forEach((doc) => {
+  // Process each document
+});
+await cursor.close();
 ```
 
 ## SQL Query Examples

@@ -100,6 +100,26 @@ async function main() {
         console.error('Error:', error instanceof Error ? error.message : String(error));
       }
     }
+    // Example showing how to use the cursor option
+    console.log('\nUsing the returnCursor option:');
+    try {
+      // Using the returnCursor option to get a MongoDB cursor
+      const cursor = await queryLeaf.execute(
+        'SELECT * FROM users WHERE active = true',
+        { returnCursor: true }
+      );
+      
+      // Now we can use the cursor methods directly
+      console.log('Iterating through cursor results with forEach:');
+      await cursor.forEach((doc: any) => {
+        console.log(`- User: ${doc.name}, Email: ${doc.email}`);
+      });
+      
+      // Always close the cursor when done
+      await cursor.close();
+    } catch (error) {
+      console.error('Cursor error:', error instanceof Error ? error.message : String(error));
+    }
   } finally {
     // Close the MongoDB client that we created
     // QueryLeaf does not manage MongoDB connections

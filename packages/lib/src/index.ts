@@ -1,4 +1,4 @@
-import { SqlStatement, Command, SqlParser, SqlCompiler, CommandExecutor } from './interfaces';
+import { SqlStatement, Command, SqlParser, SqlCompiler, CommandExecutor, ExecutionOptions } from './interfaces';
 import { MongoClient } from 'mongodb';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';
@@ -27,12 +27,13 @@ export class QueryLeaf {
   /**
    * Execute a SQL query on MongoDB
    * @param sql SQL query string
-   * @returns Query results
+   * @param options Execution options
+   * @returns Query results or cursor if returnCursor is true
    */
-  async execute(sql: string): Promise<any> {
+  async execute(sql: string, options?: ExecutionOptions): Promise<any> {
     const statement = this.parse(sql);
     const commands = this.compile(statement);
-    return await this.executor.execute(commands);
+    return await this.executor.execute(commands, options);
   }
 
   /**

@@ -210,6 +210,51 @@ class DummyCursor {
       },
     ];
   }
+  
+  /**
+   * Dummy method to simulate cursor forEach
+   * @param callback Function to execute for each document
+   */
+  async forEach(callback: (doc: any) => void): Promise<void> {
+    const results = await this.toArray();
+    for (const doc of results) {
+      callback(doc);
+    }
+  }
+  
+  /**
+   * Dummy method to simulate cursor next
+   * @returns The next document or null if none
+   */
+  async next(): Promise<any | null> {
+    const results = await this.toArray();
+    return results.length > 0 ? results[0] : null;
+  }
+  
+  /**
+   * Dummy method to simulate cursor hasNext
+   * @returns Whether there are more documents
+   */
+  async hasNext(): Promise<boolean> {
+    const results = await this.toArray();
+    return results.length > 0;
+  }
+  
+  /**
+   * Dummy method to simulate cursor count
+   * @returns The count of documents in the cursor
+   */
+  async count(): Promise<number> {
+    const results = await this.toArray();
+    return results.length;
+  }
+  
+  /**
+   * Dummy method to simulate cursor close
+   */
+  async close(): Promise<void> {
+    console.log(`[DUMMY MongoDB] Closing cursor for ${this.operation} on ${this.collectionName}`);
+  }
 }
 
 /**

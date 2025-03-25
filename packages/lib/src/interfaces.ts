@@ -103,19 +103,30 @@ export interface SqlCompiler {
 }
 
 /**
+ * Options for query execution
+ */
+export interface ExecutionOptions {
+  /**
+   * If true, return the MongoDB cursor instead of an array of results
+   * This only applies to FIND and AGGREGATE commands, other commands always return their result
+   */
+  returnCursor?: boolean;
+}
+
+/**
  * MongoDB command executor interface
  */
 export interface CommandExecutor {
   connect(): Promise<void>;
   close(): Promise<void>;
-  execute(commands: Command[]): Promise<any>;
+  execute(commands: Command[], options?: ExecutionOptions): Promise<any>;
 }
 
 /**
  * Main QueryLeaf interface
  */
 export interface QueryLeaf {
-  execute(sql: string): Promise<any>;
+  execute(sql: string, options?: ExecutionOptions): Promise<any>;
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
   getExecutor(): CommandExecutor;
@@ -123,7 +134,7 @@ export interface QueryLeaf {
 }
 
 export interface Squongo extends QueryLeaf {
-  execute(sql: string): Promise<any>;
+  execute(sql: string, options?: ExecutionOptions): Promise<any>;
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
   getExecutor(): CommandExecutor;

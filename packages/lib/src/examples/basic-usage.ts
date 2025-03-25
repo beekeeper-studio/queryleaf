@@ -104,17 +104,16 @@ async function main() {
     console.log('\nUsing the returnCursor option:');
     try {
       // Using the returnCursor option to get a MongoDB cursor
-      const cursor = await queryLeaf.execute(
-        'SELECT * FROM users WHERE active = true',
-        { returnCursor: true }
-      );
-      
+      const cursor = await queryLeaf.execute('SELECT * FROM users WHERE active = true', {
+        returnCursor: true,
+      });
+
       // Now we can use the cursor methods directly
       console.log('Iterating through cursor results with forEach:');
       await cursor.forEach((doc: any) => {
         console.log(`- User: ${doc.name}, Email: ${doc.email}`);
       });
-      
+
       // Always close the cursor when done
       await cursor.close();
     } catch (error) {

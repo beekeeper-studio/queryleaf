@@ -1,4 +1,11 @@
-import { SqlStatement, Command, SqlParser, SqlCompiler, CommandExecutor, ExecutionOptions } from './interfaces';
+import {
+  SqlStatement,
+  Command,
+  SqlParser,
+  SqlCompiler,
+  CommandExecutor,
+  ExecutionOptions,
+} from './interfaces';
 import { MongoClient } from 'mongodb';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';

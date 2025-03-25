@@ -99,7 +99,7 @@ export class MongoExecutor implements CommandExecutor {
           // Handle aggregation commands
           const pipeline = command.pipeline.map((stage) => this.convertObjectIds(stage));
           const aggregateCursor = database.collection(command.collection).aggregate(pipeline);
-          
+
           // Return cursor or array based on options
           result = returnCursor ? aggregateCursor : await aggregateCursor.toArray();
           break;

@@ -210,7 +210,7 @@ class DummyCursor {
       },
     ];
   }
-  
+
   /**
    * Dummy method to simulate cursor forEach
    * @param callback Function to execute for each document
@@ -221,7 +221,7 @@ class DummyCursor {
       callback(doc);
     }
   }
-  
+
   /**
    * Dummy method to simulate cursor next
    * @returns The next document or null if none
@@ -230,7 +230,7 @@ class DummyCursor {
     const results = await this.toArray();
     return results.length > 0 ? results[0] : null;
   }
-  
+
   /**
    * Dummy method to simulate cursor hasNext
    * @returns Whether there are more documents
@@ -239,7 +239,7 @@ class DummyCursor {
     const results = await this.toArray();
     return results.length > 0;
   }
-  
+
   /**
    * Dummy method to simulate cursor count
    * @returns The count of documents in the cursor
@@ -248,7 +248,7 @@ class DummyCursor {
     const results = await this.toArray();
     return results.length;
   }
-  
+
   /**
    * Dummy method to simulate cursor close
    */

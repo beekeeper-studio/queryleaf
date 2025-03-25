@@ -350,4 +350,125 @@ describe('Nested Fields Integration Tests', () => {
       expect(phonePricing.msrp).toBe(999);
     }
   });
+  
+  test('should select a field from a nested document without path collision', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('products').insertOne({ 
+      name: 'Tablet',
+      address: {
+        city: 'Seattle',
+        zip: '98101'
+      }
+    });
+    
+    // Verify the data with a direct MongoDB query
+    const directQuery = await db.collection('products').findOne({ name: 'Tablet' });
+    log('Direct query result:', JSON.stringify(directQuery, null, 2));
+    
+    // Act: Execute a query selecting a nested field
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `
+      SELECT 
+        name,
+        address.city
+      FROM products
+      WHERE name = 'Tablet'
+    `;
+    
+    log('Running nested field selection query:', sql);
+    
+    // Use a direct MongoDB aggregate query to test our approach
+    const directAggregateResult = await db.collection('products').aggregate([
+      { $match: { name: 'Tablet' } },
+      { $project: { 
+          name: 1, 
+          address_city: '$address.city' 
+        } 
+      }
+    ]).toArray();
+    log('Direct aggregate result:', JSON.stringify(directAggregateResult, null, 2));
+    
+    // Use the direct MongoDB aggregation to verify the approach works
+    const results = await queryLeaf.execute(sql);
+    log('Nested field selection results:', JSON.stringify(results, null, 2));
+    
+    // Assert: Verify we can access the nested field data
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Tablet');
+    
+    // Log the structure of the results for debugging
+    log('Result structure:', JSON.stringify(results[0], null, 2));
+    
+    // With the updated implementation, the nested field should be "pulled up" to the top level
+    // The field should be directly accessible using the field name without the parent part
+    expect(results[0].name).toBe('Tablet');
+    
+    // Field should be named with underscore notation (address_city) 
+    expect(results[0].address_city).toBe('Seattle');
+  });
+  
+  test('should select multiple fields from a nested document with flattened output', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('products').insertOne({ 
+      name: 'Monitor',
+      specs: {
+        resolution: '4K',
+        refreshRate: 144,
+        panel: 'IPS',
+        size: {
+          diagonal: 32,
+          width: 28,
+          height: 16
+        }
+      }
+    });
+    
+    // Act: Execute a query selecting multiple nested fields
+    const queryLeaf = testSetup.getQueryLeaf();
+    
+    const sql = `
+      SELECT 
+        name,
+        specs.resolution,
+        specs.refreshRate,
+        specs.size.diagonal
+      FROM products
+      WHERE name = 'Monitor'
+    `;
+    
+    log('Running multiple nested field selection query:', sql);
+    const results = await queryLeaf.execute(sql);
+    log('Multiple nested field selection results:', JSON.stringify(results, null, 2));
+    
+    // Assert: Verify we can access the nested field data at the top level
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Monitor');
+    
+    // Log the full results for debugging
+    console.log('FULL RESULTS:', JSON.stringify(results[0], null, 2));
+    console.log('AVAILABLE KEYS:', Object.keys(results[0]));
+    
+    // For debugging, execute a direct MongoDB aggregation
+    const directAggResult = await db.collection('products').aggregate([
+      { $match: { name: 'Monitor' } },
+      { $project: {
+          name: 1,
+          specs_resolution: '$specs.resolution',
+          specs_refreshRate: '$specs.refreshRate',
+          specs_size_diagonal: '$specs.size.diagonal'
+        }
+      }
+    ]).toArray();
+    console.log('DIRECT AGGREGATE:', JSON.stringify(directAggResult[0], null, 2));
+    
+    // All nested fields should be flattened to the top level with underscore notation
+    expect(results[0].specs_resolution).toBe('4K');
+    expect(results[0].specs_refreshRate).toBe(144);
+    expect(results[0].specs_size_diagonal).toBe(32);
+    
+    // The original nested structure should not be present
+    expect(results[0].specs).toBeUndefined();
+  });
 });

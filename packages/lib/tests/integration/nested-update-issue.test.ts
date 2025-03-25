@@ -60,9 +60,7 @@ describe('Nested Fields Update Issue', () => {
     expect(updatedCustomer?.address?.zip).toBe('10001');
   });
   
-  // NOTE: The SQL parser currently only supports one level of nesting in field names.
-  // This test is commented out as it would require parser enhancements to pass.
-  /*
+  // With our new multi-level nested field support, this test should now pass
   test('should update a deeply nested field', async () => {
     // Arrange
     const queryLeaf = testSetup.getQueryLeaf();
@@ -110,7 +108,6 @@ describe('Nested Fields Update Issue', () => {
     expect(updatedCustomer?.shipping?.address?.city).toBe('Chicago');
     expect(updatedCustomer?.shipping?.address?.state).toBe('IL');
   });
-  */
   
   test('should update a field within an array element', async () => {
     // Arrange

@@ -222,7 +222,19 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     ast.set.forEach((setItem: any) => {
       if (setItem.column && setItem.value) {
-        update[setItem.column] = this.convertValue(setItem.value);
+        let fieldName;
+        
+        // Special handling for nested fields in UPDATE statements
+        // The SQL parser treats "address.city" as table "address", column "city"
+        if (setItem.table) {
+          // Reconstruct the full nested field name
+          fieldName = `${setItem.table}.${setItem.column}`;
+        } else {
+          // Process the field name to handle nested fields with dot notation
+          fieldName = this.processFieldName(setItem.column);
+        }
+        
+        update[fieldName] = this.convertValue(setItem.value);
       }
     });
 

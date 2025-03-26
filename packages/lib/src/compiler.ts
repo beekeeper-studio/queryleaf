@@ -55,6 +55,135 @@ export class SqlCompilerImpl implements SqlCompiler {
   }
 
   /**
+   * Extract limit and offset values from an AST
+   */
+  private extractLimitOffset(ast: any): { limit?: number; skip?: number } {
+    const result: { limit?: number; skip?: number } = {};
+    
+    if (!ast.limit) return result;
+    
+    log('Extracting limit/offset from AST:', JSON.stringify(ast.limit, null, 2));
+    
+    if (
+      typeof ast.limit === 'object' &&
+      'value' in ast.limit &&
+      !Array.isArray(ast.limit.value)
+    ) {
+      // Standard LIMIT format (without OFFSET)
+      result.limit = Number(ast.limit.value);
+    } else if (
+      typeof ast.limit === 'object' &&
+      'seperator' in ast.limit &&
+      Array.isArray(ast.limit.value) &&
+      ast.limit.value.length > 0
+    ) {
+      // Handle PostgreSQL style LIMIT [OFFSET]
+      if (ast.limit.seperator === 'offset') {
+        if (ast.limit.value.length === 1) {
+          // Only OFFSET specified
+          result.skip = Number(ast.limit.value[0].value);
+        } else if (ast.limit.value.length >= 2) {
+          // Both LIMIT and OFFSET
+          result.limit = Number(ast.limit.value[0].value);
+          result.skip = Number(ast.limit.value[1].value);
+        }
+      } else {
+        // Just LIMIT
+        result.limit = Number(ast.limit.value[0].value);
+      }
+    }
+    
+    return result;
+  }
+
+  /**
+   * Extract field path from a column object
+   */
+  private extractFieldPath(column: any): string {
+    let fieldPath = '';
+    
+    if (typeof column === 'string') {
+      return this.processFieldName(column);
+    }
+    
+    if (typeof column !== 'object') return '';
+    
+    // Extract field path from different column formats
+    if ('expr' in column && column.expr) {
+      // Special case for specs.size.diagonal where it appears as schema: specs, column: size.diagonal
+      if (column.expr.schema && column.expr.column && column.expr.column.includes('.')) {
+        fieldPath = `${column.expr.schema}.${column.expr.column}`;
+        log(`Found multi-level nested field with schema: ${fieldPath}`);
+      } else if ('column' in column.expr && column.expr.column) {
+        fieldPath = this.processFieldName(column.expr.column);
+      } else if (column.expr.type === 'column_ref' && column.expr.column) {
+        // Also check for schema in column_ref
+        if (column.expr.schema && column.expr.column.includes('.')) {
+          fieldPath = `${column.expr.schema}.${column.expr.column}`;
+          log(`Found multi-level nested field in column_ref: ${fieldPath}`);
+        } else {
+          fieldPath = this.processFieldName(column.expr.column);
+        }
+      } else if (column.expr.type === 'binary_expr' && column.expr.operator === '.') {
+        // This case should have been handled by handleNestedFieldExpressions
+        // But as a fallback, try to extract the path
+        log(
+          'Binary expression in projection that should have been processed:',
+          JSON.stringify(column.expr, null, 2)
+        );
+
+        if (
+          column.expr.left &&
+          column.expr.left.column &&
+          column.expr.right &&
+          column.expr.right.column
+        ) {
+          fieldPath = `${column.expr.left.column}.${column.expr.right.column}`;
+        }
+      }
+    } else if ('type' in column && column.type === 'column_ref' && column.column) {
+      // Check for schema in direct column_ref
+      if (column.schema && column.column.includes('.')) {
+        fieldPath = `${column.schema}.${column.column}`;
+        log(`Found multi-level nested field in column type: ${fieldPath}`);
+      } else {
+        fieldPath = this.processFieldName(column.column);
+      }
+    } else if ('column' in column) {
+      // Check for schema in simple column
+      if (column.schema && column.column.includes('.')) {
+        fieldPath = `${column.schema}.${column.column}`;
+        log(`Found multi-level nested field in direct column: ${fieldPath}`);
+      } else {
+        fieldPath = this.processFieldName(column.column);
+      }
+    }
+    
+    return fieldPath;
+  }
+
+  /**
+   * Add a field to a MongoDB projection object
+   */
+  private addFieldToProjection(projection: Record<string, any>, fieldPath: string): void {
+    if (!fieldPath) return;
+    
+    log(`Processing field path for projection: ${fieldPath}`);
+
+    if (fieldPath.includes('.')) {
+      // For nested fields, create a name with underscores instead of dots
+      const fieldNameWithUnderscores = fieldPath.replace(/\./g, '_');
+
+      // Add to projection with the path-based name
+      projection[fieldNameWithUnderscores] = `$${fieldPath}`;
+      log(`Added nested field to projection: ${fieldNameWithUnderscores} = $${fieldPath}`);
+    } else {
+      // Regular field
+      projection[fieldPath] = 1;
+    }
+  }
+
+  /**
    * Compile a SELECT statement into a MongoDB FIND command or AGGREGATE command
    */
   private compileSelect(ast: any): FindCommand | AggregateCommand {
@@ -140,37 +269,12 @@ export class SqlCompilerImpl implements SqlCompiler {
       }
 
       // Handle LIMIT and OFFSET
-      if (ast.limit) {
-        log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
-        if (
-          typeof ast.limit === 'object' &&
-          'value' in ast.limit &&
-          !Array.isArray(ast.limit.value)
-        ) {
-          // Standard LIMIT format (without OFFSET)
-          aggregateCommand.pipeline.push({ $limit: Number(ast.limit.value) });
-        } else if (
-          typeof ast.limit === 'object' &&
-          'seperator' in ast.limit &&
-          Array.isArray(ast.limit.value)
-        ) {
-          // Handle PostgreSQL style LIMIT [OFFSET]
-          if (ast.limit.value.length > 0) {
-            if (ast.limit.seperator === 'offset') {
-              if (ast.limit.value.length === 1) {
-                // Only OFFSET specified
-                aggregateCommand.pipeline.push({ $skip: Number(ast.limit.value[0].value) });
-              } else if (ast.limit.value.length >= 2) {
-                // Both LIMIT and OFFSET
-                aggregateCommand.pipeline.push({ $skip: Number(ast.limit.value[1].value) });
-                aggregateCommand.pipeline.push({ $limit: Number(ast.limit.value[0].value) });
-              }
-            } else {
-              // Just LIMIT
-              aggregateCommand.pipeline.push({ $limit: Number(ast.limit.value[0].value) });
-            }
-          }
-        }
+      const { limit, skip } = this.extractLimitOffset(ast);
+      if (skip !== undefined) {
+        aggregateCommand.pipeline.push({ $skip: skip });
+      }
+      if (limit !== undefined) {
+        aggregateCommand.pipeline.push({ $limit: limit });
       }
 
       // Add projection for SELECT columns
@@ -187,92 +291,8 @@ export class SqlCompilerImpl implements SqlCompiler {
             continue;
           }
 
-          if (typeof column === 'object') {
-            let fieldPath = '';
-
-            // Extract field path from different column formats
-            if ('expr' in column && column.expr) {
-              // Special case for specs.size.diagonal where it appears as schema: specs, column: size.diagonal
-              if (column.expr.schema && column.expr.column && column.expr.column.includes('.')) {
-                fieldPath = `${column.expr.schema}.${column.expr.column}`;
-                log(`Found multi-level nested field with schema: ${fieldPath}`);
-              } else if ('column' in column.expr && column.expr.column) {
-                fieldPath = this.processFieldName(column.expr.column);
-              } else if (column.expr.type === 'column_ref' && column.expr.column) {
-                // Also check for schema in column_ref
-                if (column.expr.schema && column.expr.column.includes('.')) {
-                  fieldPath = `${column.expr.schema}.${column.expr.column}`;
-                  log(`Found multi-level nested field in column_ref: ${fieldPath}`);
-                } else {
-                  fieldPath = this.processFieldName(column.expr.column);
-                }
-              } else if (column.expr.type === 'binary_expr' && column.expr.operator === '.') {
-                // This case should have been handled by handleNestedFieldExpressions
-                // But as a fallback, try to extract the path
-                log(
-                  'Binary expression in projection that should have been processed:',
-                  JSON.stringify(column.expr, null, 2)
-                );
-
-                if (
-                  column.expr.left &&
-                  column.expr.left.column &&
-                  column.expr.right &&
-                  column.expr.right.column
-                ) {
-                  fieldPath = `${column.expr.left.column}.${column.expr.right.column}`;
-                }
-              }
-            } else if ('type' in column && column.type === 'column_ref' && column.column) {
-              // Check for schema in direct column_ref
-              if (column.schema && column.column.includes('.')) {
-                fieldPath = `${column.schema}.${column.column}`;
-                log(`Found multi-level nested field in column type: ${fieldPath}`);
-              } else {
-                fieldPath = this.processFieldName(column.column);
-              }
-            } else if ('column' in column) {
-              // Check for schema in simple column
-              if (column.schema && column.column.includes('.')) {
-                fieldPath = `${column.schema}.${column.column}`;
-                log(`Found multi-level nested field in direct column: ${fieldPath}`);
-              } else {
-                fieldPath = this.processFieldName(column.column);
-              }
-            }
-
-            // If we found a field path, add it to the projection
-            if (fieldPath) {
-              log(`Processing field path for projection: ${fieldPath}`);
-
-              if (fieldPath.includes('.')) {
-                // For nested fields, create a name with underscores instead of dots
-                const fieldNameWithUnderscores = fieldPath.replace(/\./g, '_');
-
-                // Add to projection with the path-based name
-                projection[fieldNameWithUnderscores] = `$${fieldPath}`;
-                log(
-                  `Added nested field to projection: ${fieldNameWithUnderscores} = $${fieldPath}`
-                );
-              } else {
-                // Regular field
-                projection[fieldPath] = 1;
-              }
-            }
-          } else if (typeof column === 'string') {
-            const fieldPath = this.processFieldName(column);
-
-            if (fieldPath.includes('.')) {
-              // For nested fields, create a name with underscores instead of dots
-              const fieldNameWithUnderscores = fieldPath.replace(/\./g, '_');
-
-              // Add to projection with the path-based name
-              projection[fieldNameWithUnderscores] = `$${fieldPath}`;
-            } else {
-              // Regular field
-              projection[fieldPath] = 1;
-            }
-          }
+          const fieldPath = this.extractFieldPath(column);
+          this.addFieldToProjection(projection, fieldPath);
         }
 
         // Add the projection stage if we have fields to project
@@ -294,38 +314,9 @@ export class SqlCompilerImpl implements SqlCompiler {
       };
 
       // Handle LIMIT and OFFSET
-      if (ast.limit) {
-        log('Limit found in AST:', JSON.stringify(ast.limit, null, 2));
-        if (
-          typeof ast.limit === 'object' &&
-          'value' in ast.limit &&
-          !Array.isArray(ast.limit.value)
-        ) {
-          // Standard PostgreSQL LIMIT format (without OFFSET)
-          findCommand.limit = Number(ast.limit.value);
-        } else if (
-          typeof ast.limit === 'object' &&
-          'seperator' in ast.limit &&
-          Array.isArray(ast.limit.value)
-        ) {
-          // Handle PostgreSQL style LIMIT [OFFSET]
-          if (ast.limit.value.length > 0) {
-            if (ast.limit.seperator === 'offset') {
-              if (ast.limit.value.length === 1) {
-                // Only OFFSET specified
-                findCommand.skip = Number(ast.limit.value[0].value);
-              } else if (ast.limit.value.length >= 2) {
-                // Both LIMIT and OFFSET specified
-                findCommand.limit = Number(ast.limit.value[0].value);
-                findCommand.skip = Number(ast.limit.value[1].value);
-              }
-            } else {
-              // Regular LIMIT without OFFSET
-              findCommand.limit = Number(ast.limit.value[0].value);
-            }
-          }
-        }
-      }
+      const { limit, skip } = this.extractLimitOffset(ast);
+      if (limit !== undefined) findCommand.limit = limit;
+      if (skip !== undefined) findCommand.skip = skip;
 
       // Handle ORDER BY
       if (ast.orderby) {

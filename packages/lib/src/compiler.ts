@@ -59,16 +59,12 @@ export class SqlCompilerImpl implements SqlCompiler {
    */
   private extractLimitOffset(ast: any): { limit?: number; skip?: number } {
     const result: { limit?: number; skip?: number } = {};
-    
+
     if (!ast.limit) return result;
-    
+
     log('Extracting limit/offset from AST:', JSON.stringify(ast.limit, null, 2));
-    
-    if (
-      typeof ast.limit === 'object' &&
-      'value' in ast.limit &&
-      !Array.isArray(ast.limit.value)
-    ) {
+
+    if (typeof ast.limit === 'object' && 'value' in ast.limit && !Array.isArray(ast.limit.value)) {
       // Standard LIMIT format (without OFFSET)
       result.limit = Number(ast.limit.value);
     } else if (
@@ -92,7 +88,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         result.limit = Number(ast.limit.value[0].value);
       }
     }
-    
+
     return result;
   }
 
@@ -101,13 +97,13 @@ export class SqlCompilerImpl implements SqlCompiler {
    */
   private extractFieldPath(column: any): string {
     let fieldPath = '';
-    
+
     if (typeof column === 'string') {
       return this.processFieldName(column);
     }
-    
+
     if (typeof column !== 'object') return '';
-    
+
     // Extract field path from different column formats
     if ('expr' in column && column.expr) {
       // Special case for specs.size.diagonal where it appears as schema: specs, column: size.diagonal
@@ -158,7 +154,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         fieldPath = this.processFieldName(column.column);
       }
     }
-    
+
     return fieldPath;
   }
 
@@ -167,7 +163,7 @@ export class SqlCompilerImpl implements SqlCompiler {
    */
   private addFieldToProjection(projection: Record<string, any>, fieldPath: string): void {
     if (!fieldPath) return;
-    
+
     log(`Processing field path for projection: ${fieldPath}`);
 
     if (fieldPath.includes('.')) {

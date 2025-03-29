@@ -1,5 +1,9 @@
 # License FAQ
 
+## Managing existing licenses
+
+Go to the [QueryLeaf Billing Dashboard](https://billing.stripe.com/p/login/bIYdRKdtcfklgdqaEE) to manage existing subscriptions
+
 ## General Questions
 
 ### What license does QueryLeaf use?

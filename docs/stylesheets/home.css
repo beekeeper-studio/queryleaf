@@ -284,6 +284,7 @@ body.homepage .md-content__inner > :not(.hero):not(.features-section):not(.code-
   bottom: 0;
   background-image: url('data:image/svg+xml;utf8,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><path d="M54 22c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm-48 0c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm6 18c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm12 0c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm12 0c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3zm12 0c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="rgba(76, 175, 80, 0.03)"/></svg>');
   opacity: 0.5;
+  z-index: 0;
 }
 
 .code-sample-section .section-title h2 {
@@ -413,12 +414,16 @@ body.homepage .md-content__inner > :not(.hero):not(.features-section):not(.code-
 .code-sample-buttons {
   text-align: center;
   margin-top: 2.5rem;
+  position: relative;
+  z-index: 10;
 }
 
 .code-sample-buttons .md-button {
   min-width: 200px;
   font-weight: 600;
   padding: 0.8rem 1.8rem;
+  position: relative;
+  z-index: 10;
 }
 
 @media (max-width: 1024px) {

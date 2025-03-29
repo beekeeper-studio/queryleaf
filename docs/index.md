@@ -412,6 +412,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
 .package-features li {
   padding: 8px 0 8px 30px;
   position: relative;
+  list-style: none;
 }
 
 .package-features li:before {
@@ -507,7 +508,6 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
           <h3>Enterprise</h3>
           <div class="pricing-cost">
             <span class="price">Contact</span>
-            <span class="price-period">custom pricing</span>
           </div>
           <p class="pricing-description">For large organizations and OEM licensing</p>
         </div>
@@ -551,7 +551,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
           </ul>
         </div>
       </div>
-      <div class="community-cta" styles="z-index=100;">
+      <div class="community-cta" style="z-index:100; position:relative;">
         <a href="getting-started/installation/" class="md-button">
           Get Started Free
         </a>

@@ -412,6 +412,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
 .package-features li {
   padding: 8px 0 8px 30px;
   position: relative;
+  list-style: none;
 }
 
 .package-features li:before {
@@ -454,8 +455,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
         <div class="pricing-header">
           <h3>Professional</h3>
           <div class="pricing-cost">
-            <span class="price">$98/month</span>
-            <span class="price-period">or $995/year</span>
+            <span class="price">$995/year</span>
           </div>
           <p class="pricing-description">Up to 10 developers</p>
         </div>
@@ -471,7 +471,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
         </div>
         
         <div class="pricing-footer">
-          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Professional License" class="md-button">
+          <a href="https://buy.stripe.com/4gwcP69t9h2Y304fYY" target="_blank" class="md-button">
             Purchase License
           </a>
         </div>
@@ -481,8 +481,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
         <div class="pricing-header">
           <h3>Business</h3>
           <div class="pricing-cost">
-            <span class="price">$199/month</span>
-            <span class="price-period">or $1995/year</span>
+            <span class="price">$1995/year</span>
           </div>
           <p class="pricing-description">Up to 50 developers</p>
         </div>
@@ -498,7 +497,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
         </div>
         
         <div class="pricing-footer">
-          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Business License" class="md-button md-button--primary">
+          <a href="https://buy.stripe.com/14k4iAbBh3c8fMQaEF" class="md-button md-button--primary">
             Purchase License
           </a>
         </div>
@@ -509,7 +508,6 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
           <h3>Enterprise</h3>
           <div class="pricing-cost">
             <span class="price">Contact</span>
-            <span class="price-period">custom pricing</span>
           </div>
           <p class="pricing-description">For large organizations and OEM licensing</p>
         </div>
@@ -525,7 +523,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
         </div>
         
         <div class="pricing-footer">
-          <a href="mailto:enterprise@queryleaf.com?subject=QueryLeaf Enterprise License" class="md-button">
+          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Enterprise License" class="md-button">
             Contact Sales
           </a>
         </div>
@@ -542,7 +540,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
           </div>
         </div>
         <p class="community-description">
-          Free for personal use, trial under commercial license, or free forever under AGPL
+          Free for personal use, trialing features during development, or free forever under the terms of the AGPL
         </p>
         <div class="community-features">
           <ul>
@@ -553,7 +551,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
           </ul>
         </div>
       </div>
-      <div class="community-cta">
+      <div class="community-cta" style="z-index:100; position:relative;">
         <a href="getting-started/installation/" class="md-button">
           Get Started Free
         </a>

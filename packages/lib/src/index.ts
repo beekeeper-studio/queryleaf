@@ -5,8 +5,9 @@ import {
   SqlCompiler,
   CommandExecutor,
   ExecutionOptions,
+  ExecutionResult,
 } from './interfaces';
-import { MongoClient } from 'mongodb';
+import { Document, MongoClient } from 'mongodb';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';
 import { MongoExecutor } from './executor';
@@ -36,8 +37,9 @@ export class QueryLeaf {
    * @param sql SQL query string
    * @param options Execution options
    * @returns Query results or cursor if returnCursor is true
+   * @typeParam T - The type of documents that will be returned (defaults to Document)
    */
-  async execute(sql: string, options?: ExecutionOptions): Promise<any> {
+  async execute<T = Document>(sql: string, options?: ExecutionOptions): Promise<ExecutionResult<T>> {
     const statement = this.parse(sql);
     const commands = this.compile(statement);
     return await this.executor.execute(commands, options);
@@ -99,6 +101,7 @@ export {
   SqlParser,
   SqlCompiler,
   CommandExecutor,
+  ExecutionResult,
   SqlParserImpl,
   SqlCompilerImpl,
   MongoExecutor,

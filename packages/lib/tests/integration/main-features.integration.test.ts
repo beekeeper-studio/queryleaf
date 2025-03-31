@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { testSetup, createLogger } from './test-setup';
+import { testSetup, createLogger, ensureArray, ensureDocument } from './test-setup';
 
 const log = createLogger('main-features');
 
@@ -52,7 +52,7 @@ describe('Main SQL Features Integration Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = "SELECT name FROM simple_products WHERE details.color = 'black'";
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert
     expect(results).toHaveLength(1);
@@ -74,7 +74,7 @@ describe('Main SQL Features Integration Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = "SELECT category, COUNT(*) as count FROM simple_products GROUP BY category";
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert - verify we have at least the 3 groups (Electronics, Clothing, Books)
     // Due to implementation changes, the actual number of results might vary
@@ -101,7 +101,7 @@ describe('Main SQL Features Integration Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = "SELECT name FROM simple_products WHERE (category = 'Electronics' AND price < 1000) OR (category = 'Clothing' AND price < 50)";
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert - we should have 3 rows matching our criteria:
     // - Smartphone (Electronics < 1000)
@@ -131,7 +131,7 @@ describe('Main SQL Features Integration Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = "SELECT name as product_name, category as product_type, price as list_price FROM simple_products";
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     log('Column aliases results:', JSON.stringify(results, null, 2));
     
     // Assert - check that the aliases are present in some form
@@ -187,7 +187,7 @@ describe('Main SQL Features Integration Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = "SELECT name FROM simple_products WHERE category IN ('Electronics')";
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     log('IN operator results:', JSON.stringify(results, null, 2));
     
     // Assert - we should have Electronics products

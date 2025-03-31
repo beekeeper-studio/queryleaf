@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { testSetup, createLogger } from './test-setup';
+import { testSetup, createLogger, ensureArray, ensureDocument } from './test-setup';
 
 const log = createLogger('group-by');
 
@@ -73,7 +73,7 @@ describe('GROUP BY Integration Tests', () => {
       GROUP BY category
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     log('Simple GROUP BY results:', JSON.stringify(results, null, 2));
     
     // Basic verification - check we have results
@@ -196,7 +196,7 @@ describe('GROUP BY Integration Tests', () => {
       GROUP BY category, region, year
     `;
     
-    const multiResults = await multiQueryLeaf.execute(multiSql);
+    const multiResults = ensureArray(await multiQueryLeaf.execute(multiSql));
     log('Multi-column GROUP BY results:', JSON.stringify(multiResults, null, 2));
     
     // Create a more resilient verification that's simpler

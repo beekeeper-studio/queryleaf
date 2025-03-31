@@ -1,7 +1,8 @@
 import { MongoTestContainer, loadFixtures, testUsers, testProducts, testOrders } from '../utils/mongo-container';
 import { ObjectId } from 'mongodb';
-import { QueryLeaf } from '../../src/index';
+import { isCursor, QueryLeaf } from '../../src/index';
 import { createLogger } from './test-setup';
+import { ensureArray, ensureDocument } from './test-setup';
 
 const log = createLogger('integration');
 
@@ -38,7 +39,7 @@ describe('QueryLeaf Integration Tests', () => {
       const sql = 'SELECT * FROM users';
       
       log('Executing SQL:', sql);
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       log('Results:', JSON.stringify(results, null, 2));
       
       expect(results).toHaveLength(testUsers.length);
@@ -70,12 +71,12 @@ describe('QueryLeaf Integration Tests', () => {
       const queryLeaf = getQueryLeaf();
       // We need to first test if we can find the user at all
       const findSql = "SELECT * FROM users WHERE name = 'Nested User'";
-      const findResults = await queryLeaf.execute(findSql);
+      const findResults = ensureArray(await queryLeaf.execute(findSql));
       log('Find by name results:', JSON.stringify(findResults, null, 2));
       
       // Now test the nested fields - use a format that works better with the MongoDB projection
       const sql = "SELECT name, address FROM users WHERE name = 'Nested User'";
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       log('Nested field results:', JSON.stringify(results, null, 2));
       
       expect(results.length).toBeGreaterThan(0);
@@ -90,7 +91,7 @@ describe('QueryLeaf Integration Tests', () => {
       const queryLeaf = getQueryLeaf();
       const sql = 'SELECT * FROM users WHERE age > 20';
       
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       
       expect(results.length).toBeGreaterThan(0);
       expect(results.length).toBeLessThan(testUsers.length);
@@ -101,7 +102,7 @@ describe('QueryLeaf Integration Tests', () => {
       const queryLeaf = getQueryLeaf();
       const sql = 'SELECT name, email FROM users';
       
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       
       // We have added a 'Nested User' in a previous test, so we'll have more than the original test users
       expect(results.length).toBeGreaterThanOrEqual(testUsers.length);
@@ -116,7 +117,7 @@ describe('QueryLeaf Integration Tests', () => {
       const queryLeaf = getQueryLeaf();
       const sql = "SELECT * FROM products WHERE category = 'Electronics'";
       
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       
       expect(results.length).toBeGreaterThan(0);
       expect(results.every((product: any) => product.category === 'Electronics')).toBe(true);
@@ -126,7 +127,7 @@ describe('QueryLeaf Integration Tests', () => {
       const queryLeaf = getQueryLeaf();
       const sql = "SELECT * FROM users WHERE age >= 25 AND active = true";
       
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       
       expect(results.length).toBeGreaterThan(0);
       expect(results.every((user: any) => user.age >= 25 && user.active === true)).toBe(true);
@@ -150,7 +151,7 @@ describe('QueryLeaf Integration Tests', () => {
       // Just fetch the entire document
       const sql = "SELECT * FROM orders";
       
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       
       // Log the results to see the structure 
       log('Array access results:', JSON.stringify(results, null, 2));
@@ -196,7 +197,7 @@ describe('QueryLeaf Integration Tests', () => {
       
       // Test with a simplified query that doesn't rely on specific nested field or array syntax
       const simpleSql = "SELECT metadata, items FROM complex_data WHERE name = 'Complex Object'";
-      const results = await queryLeaf.execute(simpleSql);
+      const results = ensureArray(await queryLeaf.execute(simpleSql));
       log('Complex data query results:', JSON.stringify(results, null, 2));
       
       // Verify we have a result
@@ -241,7 +242,7 @@ describe('QueryLeaf Integration Tests', () => {
       const queryLeaf = getQueryLeaf();
       const sql = 'SELECT region FROM simple_stats GROUP BY region';
       
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       log('GROUP BY results:', JSON.stringify(results, null, 2));
       
       // We have 4 distinct regions, but due to the implementation change,
@@ -278,12 +279,12 @@ describe('QueryLeaf Integration Tests', () => {
       
       // First query to get books
       const booksSql = `SELECT * FROM books`;
-      const booksResults = await queryLeaf.execute(booksSql);
+      const booksResults = ensureArray(await queryLeaf.execute(booksSql));
       log('Books results:', JSON.stringify(booksResults, null, 2));
       
       // Second query to get authors
       const authorsSql = `SELECT * FROM authors`;
-      const authorsResults = await queryLeaf.execute(authorsSql);
+      const authorsResults = ensureArray(await queryLeaf.execute(authorsSql));
       log('Authors results:', JSON.stringify(authorsResults, null, 2));
       
       // Check that we have the right number of books and authors
@@ -347,7 +348,7 @@ describe('QueryLeaf Integration Tests', () => {
       
       // Now, using QueryLeaf to search for books more generally (to be safer)
       const simpleBooksSql = `SELECT * FROM books`;
-      const allBooksResults = await queryLeaf.execute(simpleBooksSql);
+      const allBooksResults = ensureArray(await queryLeaf.execute(simpleBooksSql));
       log('All books query results:', JSON.stringify(allBooksResults, null, 2));
       
       // As long as we get some books back, this demonstrates querying works
@@ -369,7 +370,7 @@ describe('QueryLeaf Integration Tests', () => {
       const queryLeaf = getQueryLeaf();
       const sql = 'SELECT * FROM products ORDER BY price DESC';
       
-      const results = await queryLeaf.execute(sql);
+      const results = ensureArray(await queryLeaf.execute(sql));
       
       expect(results).toHaveLength(testProducts.length);
       
@@ -386,7 +387,7 @@ describe('QueryLeaf Integration Tests', () => {
       const sql = 'SELECT * FROM users';
       
       log('Executing SQL:', sql);
-      const allResults = await queryLeaf.execute(sql);
+      const allResults = ensureArray(await queryLeaf.execute(sql));
       const limitedResults = allResults.slice(0, 2); // Manually limit to 2 results
       
       log('All results count:', allResults.length);
@@ -403,13 +404,13 @@ describe('QueryLeaf Integration Tests', () => {
       
       // First get all users to know how many we have
       const allUsersSql = 'SELECT * FROM users';
-      const allUsers = await queryLeaf.execute(allUsersSql);
+      const allUsers = ensureArray(await queryLeaf.execute(allUsersSql));
       log('Total users:', allUsers.length);
       
       // Execute SQL with OFFSET
       const offsetSql = 'SELECT * FROM users OFFSET 2';
       log('Executing SQL with OFFSET:', offsetSql);
-      const offsetResults = await queryLeaf.execute(offsetSql);
+      const offsetResults = ensureArray(await queryLeaf.execute(offsetSql));
       
       // Verify we have the expected number of results
       expect(offsetResults.length).toBe(allUsers.length - 2);
@@ -423,7 +424,7 @@ describe('QueryLeaf Integration Tests', () => {
       
       // First get all users ordered by name to have consistent results
       const allUsersSql = 'SELECT * FROM users ORDER BY name';
-      const allUsers = await queryLeaf.execute(allUsersSql);
+      const allUsers = ensureArray(await queryLeaf.execute(allUsersSql));
       log('Total ordered users:', allUsers.length);
       
       // Make sure we have enough users for this test
@@ -432,7 +433,7 @@ describe('QueryLeaf Integration Tests', () => {
       // Execute SQL with LIMIT and OFFSET
       const paginatedSql = 'SELECT * FROM users ORDER BY name LIMIT 2 OFFSET 1';
       log('Executing SQL with LIMIT and OFFSET:', paginatedSql);
-      const paginatedResults = await queryLeaf.execute(paginatedSql);
+      const paginatedResults = ensureArray(await queryLeaf.execute(paginatedSql));
       
       // Verify we have the expected number of results
       expect(paginatedResults.length).toBe(2);
@@ -450,13 +451,13 @@ describe('QueryLeaf Integration Tests', () => {
       const sql = `INSERT INTO users (_id, name, age, email, active) 
                    VALUES ('${newId.toString()}', 'New User', 28, 'new@example.com', true)`;
       
-      const result = await queryLeaf.execute(sql);
+      const result = ensureDocument(await queryLeaf.execute(sql));
       
       expect(result.acknowledged).toBe(true);
       expect(result.insertedCount).toBe(1);
       
       // Verify the insertion with a SELECT
-      const selectResult = await queryLeaf.execute(`SELECT * FROM users WHERE _id = '${newId.toString()}'`);
+      const selectResult = ensureArray(await queryLeaf.execute(`SELECT * FROM users WHERE _id = '${newId.toString()}'`));
       expect(selectResult).toHaveLength(1);
       expect(selectResult[0].name).toBe('New User');
     });
@@ -469,12 +470,14 @@ describe('QueryLeaf Integration Tests', () => {
       const sql = `UPDATE products SET price = 1300 WHERE _id = '${productId.toString()}'`;
       
       const result = await queryLeaf.execute(sql);
+
+      if (!result || isCursor(result) || Array.isArray(result)) throw new Error('Wrong type received from queryleaf');
       
       expect(result.acknowledged).toBe(true);
       expect(result.modifiedCount).toBe(1);
       
       // Verify the update with a SELECT
-      const selectResult = await queryLeaf.execute(`SELECT * FROM products WHERE _id = '${productId.toString()}'`);
+      const selectResult = ensureArray(await queryLeaf.execute(`SELECT * FROM products WHERE _id = '${productId.toString()}'`));
       expect(selectResult).toHaveLength(1);
       expect(selectResult[0].price).toBe(1300);
     });
@@ -487,12 +490,14 @@ describe('QueryLeaf Integration Tests', () => {
       const sql = `DELETE FROM orders WHERE _id = '${orderId.toString()}'`;
       
       const result = await queryLeaf.execute(sql);
+
+      if (!result || isCursor(result) || Array.isArray(result)) throw new Error('Wrong type received from queryleaf');
       
       expect(result.acknowledged).toBe(true);
       expect(result.deletedCount).toBe(1);
       
       // Verify the deletion with a SELECT
-      const selectResult = await queryLeaf.execute(`SELECT * FROM orders WHERE _id = '${orderId.toString()}'`);
+      const selectResult = ensureArray(await queryLeaf.execute(`SELECT * FROM orders WHERE _id = '${orderId.toString()}'`));
       expect(selectResult).toHaveLength(0);
     });
   });

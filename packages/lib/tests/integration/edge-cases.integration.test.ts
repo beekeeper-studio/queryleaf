@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { testSetup, createLogger } from './test-setup';
+import { testSetup, createLogger, ensureArray } from './test-setup';
 
 const log = createLogger('edge-cases');
 
@@ -51,7 +51,7 @@ describe('Edge Cases Integration Tests', () => {
     // to be supported by most SQL parsers
     const sql = 'SELECT name, field_with_underscores FROM edge_test WHERE field_with_underscores = "value1"';
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert
     expect(results).toHaveLength(1);
@@ -104,7 +104,7 @@ describe('Edge Cases Integration Tests', () => {
     // Try to do numerical comparison on non-numeric data
     const sql = 'SELECT name FROM edge_test WHERE value > 100';
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert - should only find the numeric value that's valid for comparison
     expect(results).toHaveLength(1);
@@ -125,7 +125,7 @@ describe('Edge Cases Integration Tests', () => {
     // Use the string representation of ObjectId in SQL
     const sql = `SELECT name FROM edge_test WHERE _id = '${objectId.toString()}'`;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert
     expect(results).toHaveLength(1);
@@ -147,7 +147,7 @@ describe('Edge Cases Integration Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = 'SELECT * FROM edge_test';
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert
     expect(results).toHaveLength(1000);

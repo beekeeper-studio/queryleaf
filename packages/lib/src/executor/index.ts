@@ -1,5 +1,5 @@
-import { CommandExecutor, Command, ExecutionOptions } from '../interfaces';
-import { MongoClient, ObjectId } from 'mongodb';
+import { CommandExecutor, Command, ExecutionOptions, ExecutionResult } from '../interfaces';
+import { Document, MongoClient, ObjectId } from 'mongodb';
 
 /**
  * MongoDB command executor implementation for Node.js
@@ -36,9 +36,10 @@ export class MongoExecutor implements CommandExecutor {
    * Execute a series of MongoDB commands
    * @param commands Array of commands to execute
    * @param options Execution options
-   * @returns Result of the last command
+   * @returns Result of the last command based on command type and options
+   * @typeParam T - The type of documents that will be returned (defaults to Document)
    */
-  async execute(commands: Command[], options?: ExecutionOptions): Promise<any> {
+  async execute<T = Document>(commands: Command[], options?: ExecutionOptions): Promise<ExecutionResult<T>> {
     // We assume the client is already connected
 
     const database = this.client.db(this.dbName);

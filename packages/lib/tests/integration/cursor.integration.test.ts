@@ -1,6 +1,29 @@
 import { testSetup, createLogger } from './test-setup';
+import { isCursor } from '../../src/interfaces';
+import { Document, FindCursor, AggregationCursor } from 'mongodb';
 
 const log = createLogger('cursor');
+
+/**
+ * Helper function to get a cursor from queryLeaf execution
+ * This makes the tests more readable and handles type checking
+ */
+async function getCursor(
+  queryLeaf: any, 
+  sql: string, 
+  options = { returnCursor: true }
+): Promise<FindCursor<Document> | AggregationCursor<Document>> {
+  const result = await queryLeaf.execute(sql, options);
+  
+  // Verify we got a cursor back
+  expect(isCursor(result)).toBe(true);
+  
+  if (!isCursor(result)) {
+    throw new Error('Expected a cursor but got a different result type');
+  }
+  
+  return result;
+}
 
 describe('MongoDB Cursor Functionality Tests', () => {
   beforeAll(async () => {
@@ -25,14 +48,26 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const db = testSetup.getDb();
     await db.collection('test_cursor').deleteMany({});
     
+    // Generate 30 test products (more than the default MongoDB batch size of 20)
+    // to properly test cursor batching
+    const testProducts: any[] = [];
+    const categories = ['Electronics', 'Clothing', 'Books', 'Home', 'Sports'];
+    
+    for (let i = 1; i <= 30; i++) {
+      const categoryIndex = i % categories.length;
+      const price = 10 + (i * 5); // Different prices for variety
+      
+      testProducts.push({
+        name: `Product ${i}`,
+        category: categories[categoryIndex],
+        price: price,
+        sku: `SKU-${i.toString().padStart(4, '0')}`,
+        inStock: i % 3 === 0 ? false : true
+      });
+    }
+    
     // Insert test data
-    await db.collection('test_cursor').insertMany([
-      { name: 'Product 1', category: 'Electronics', price: 100 },
-      { name: 'Product 2', category: 'Electronics', price: 200 },
-      { name: 'Product 3', category: 'Clothing', price: 50 },
-      { name: 'Product 4', category: 'Clothing', price: 75 },
-      { name: 'Product 5', category: 'Books', price: 25 }
-    ]);
+    await db.collection('test_cursor').insertMany(testProducts);
   });
   
   afterEach(async () => {
@@ -46,15 +81,20 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const results = await queryLeaf.execute('SELECT * FROM test_cursor');
+    const result = await queryLeaf.execute('SELECT * FROM test_cursor');
     
-    // Assert
-    expect(Array.isArray(results)).toBe(true);
-    expect(results.length).toBe(5);
-    // Check for expected array methods
-    expect(typeof results.map).toBe('function');
-    expect(typeof results.forEach).toBe('function');
-    expect(typeof results.filter).toBe('function');
+    // Type checking - we expect this to be a Document[] (not a cursor)
+    expect(Array.isArray(result)).toBe(true);
+    
+    // With the type assertion, TypeScript knows it's an array
+    if (Array.isArray(result)) {
+      const results = result;
+      expect(results.length).toBe(30);
+      // Check for expected array methods
+      expect(typeof results.map).toBe('function');
+      expect(typeof results.forEach).toBe('function');
+      expect(typeof results.filter).toBe('function');
+    }
   });
 
   test('should return a cursor when returnCursor is true', async () => {
@@ -62,18 +102,24 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await queryLeaf.execute('SELECT * FROM test_cursor', { returnCursor: true });
+    const result = await queryLeaf.execute('SELECT * FROM test_cursor', { returnCursor: true });
     
     // Assert
-    expect(cursor).toBeDefined();
-    // Check for expected cursor methods
-    expect(typeof cursor.toArray).toBe('function');
-    expect(typeof cursor.forEach).toBe('function');
-    expect(typeof cursor.next).toBe('function');
-    expect(typeof cursor.hasNext).toBe('function');
+    expect(result).toBeDefined();
+    // Use type guard to check that we got a cursor
+    expect(isCursor(result)).toBe(true);
     
-    // Clean up
-    await cursor.close();
+    // Now that we've confirmed it's a cursor, we can safely assert on cursor methods
+    if (isCursor(result)) {
+      const cursor = result;
+      expect(typeof cursor.toArray).toBe('function');
+      expect(typeof cursor.forEach).toBe('function');
+      expect(typeof cursor.next).toBe('function');
+      expect(typeof cursor.hasNext).toBe('function');
+      
+      // Clean up
+      await cursor.close();
+    }
   });
 
   test('should be able to iterate through cursor with forEach', async () => {
@@ -81,7 +127,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await queryLeaf.execute('SELECT * FROM test_cursor', { returnCursor: true });
+    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
     
     const results: any[] = [];
     await cursor.forEach((doc: any) => {
@@ -89,7 +135,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     });
     
     // Assert
-    expect(results.length).toBe(5);
+    expect(results.length).toBe(30);
     expect(results[0].name).toBeDefined();
     
     // Clean up
@@ -101,12 +147,12 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await queryLeaf.execute('SELECT * FROM test_cursor', { returnCursor: true });
+    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
     const results = await cursor.toArray();
     
     // Assert
     expect(Array.isArray(results)).toBe(true);
-    expect(results.length).toBe(5);
+    expect(results.length).toBe(30);
     
     // Clean up
     await cursor.close();
@@ -117,7 +163,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await queryLeaf.execute('SELECT * FROM test_cursor', { returnCursor: true });
+    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
     
     // Assert
     // Check if we have documents
@@ -126,7 +172,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     // Get the first document
     const firstDoc = await cursor.next();
     expect(firstDoc).toBeDefined();
-    expect(firstDoc.name).toBeDefined();
+    expect(firstDoc?.name).toBeDefined();
     
     // Get remaining documents
     const docs: any[] = [];
@@ -135,8 +181,8 @@ describe('MongoDB Cursor Functionality Tests', () => {
       docs.push(doc);
     }
     
-    // We should have 4 remaining documents
-    expect(docs.length).toBe(4);
+    // We should have 29 remaining documents
+    expect(docs.length).toBe(29);
     
     // Clean up
     await cursor.close();
@@ -147,17 +193,18 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await queryLeaf.execute(
-      "SELECT * FROM test_cursor WHERE category = 'Electronics'", 
-      { returnCursor: true }
-    );
+    const cursor = await getCursor(queryLeaf, "SELECT * FROM test_cursor WHERE category = 'Electronics'");
     
     const results = await cursor.toArray();
     
     // Assert
-    expect(results.length).toBe(2);
-    expect(results[0].category).toBe('Electronics');
-    expect(results[1].category).toBe('Electronics');
+    // With our test data generation logic (5 categories), we expect 6 Electronics products
+    const expectedElectronicsCount = Math.ceil(30 / 5); // 30 products / 5 categories
+    expect(results.length).toBe(expectedElectronicsCount);
+    // Check that all results are from Electronics category
+    results.forEach(product => {
+      expect(product.category).toBe('Electronics');
+    });
     
     // Clean up
     await cursor.close();
@@ -168,18 +215,16 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await queryLeaf.execute(
-      'SELECT * FROM test_cursor ORDER BY price DESC', 
-      { returnCursor: true }
-    );
+    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor ORDER BY price DESC');
     
     const results = await cursor.toArray();
     
     // Assert
-    expect(results.length).toBe(5);
+    expect(results.length).toBe(30);
     // Check if sorted in descending order
-    expect(results[0].price).toBe(200);
-    expect(results[1].price).toBe(100);
+    // With our generation logic: prices = 10 + (i * 5), highest should be for i=30
+    expect(results[0].price).toBe(160); // Product 30: 10 + (30 * 5) = 160
+    expect(results[1].price).toBe(155); // Product 29: 10 + (29 * 5) = 155
     
     // Clean up
     await cursor.close();
@@ -198,15 +243,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     log('Direct MongoDB aggregate result:', JSON.stringify(directAggregateResult, null, 2));
     
     // Act
-    const cursor = await queryLeaf.execute(
-      'SELECT category, COUNT(*) as count FROM test_cursor GROUP BY category', 
-      { returnCursor: true }
-    );
-    
-    // First verify the cursor has expected methods
-    expect(cursor).toBeDefined();
-    expect(typeof cursor.toArray).toBe('function');
-    expect(typeof cursor.forEach).toBe('function');
+    const cursor = await getCursor(queryLeaf, 'SELECT category, COUNT(*) as count FROM test_cursor GROUP BY category');
     
     // Get the results and log them
     const results = await cursor.toArray();
@@ -217,7 +254,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     expect(results.length).toBeGreaterThan(0);
     
     // In a MongoDB aggregation with $group, the group key is always in _id
-    // We expect 3 distinct categories in our test data
+    // We expect 5 distinct categories in our test data
     const uniqueCategories = new Set();
     
     results.forEach(r => {
@@ -239,10 +276,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act - Use LIMIT and OFFSET in SQL
-    const cursor = await queryLeaf.execute(
-      'SELECT * FROM test_cursor LIMIT 2 OFFSET 1', 
-      { returnCursor: true }
-    );
+    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor LIMIT 2 OFFSET 1');
     
     const results = await cursor.toArray();
     
@@ -258,10 +292,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await queryLeaf.execute(
-      'SELECT * FROM test_cursor', 
-      { returnCursor: true }
-    );
+    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
     
     // Get some results first to ensure the cursor is actually used
     expect(await cursor.hasNext()).toBe(true);
@@ -272,5 +303,50 @@ describe('MongoDB Cursor Functionality Tests', () => {
     // Assert - at this point, we can't really test if the cursor is closed
     // in a reliable way without accessing MongoDB internals
     // The best we can do is ensure no error was thrown when closing
+  });
+
+  test('should handle cursor batching properly with next/hasNext', async () => {
+    // Arrange
+    const queryLeaf = testSetup.getQueryLeaf();
+    
+    // Act
+    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor ORDER BY price ASC');
+    
+    // Manual iteration to test batching behavior
+    // Default MongoDB batch size is 20, so we need to iterate beyond that
+    
+    // First, get a batch of items iteratively
+    const firstBatchItems: any[] = [];
+    for (let i = 0; i < 25; i++) {
+      expect(await cursor.hasNext()).toBe(true); // Should still have more
+      const item = await cursor.next();
+      expect(item).toBeDefined();
+      firstBatchItems.push(item);
+    }
+    
+    // Verify we got 25 items (which crosses the default batch boundary of 20)
+    expect(firstBatchItems.length).toBe(25);
+    
+    // Verify we still have more items
+    expect(await cursor.hasNext()).toBe(true);
+    
+    // Get the remaining items
+    const remainingItems: any[] = [];
+    while (await cursor.hasNext()) {
+      const item = await cursor.next();
+      remainingItems.push(item);
+    }
+    
+    // Verify we got all 30 items (25 + 5 more)
+    expect(remainingItems.length).toBe(5);
+    expect(firstBatchItems.length + remainingItems.length).toBe(30);
+    
+    // Verify items are in ascending price order as requested
+    for (let i = 1; i < firstBatchItems.length; i++) {
+      expect(firstBatchItems[i].price).toBeGreaterThanOrEqual(firstBatchItems[i-1].price);
+    }
+    
+    // Clean up
+    await cursor.close();
   });
 });

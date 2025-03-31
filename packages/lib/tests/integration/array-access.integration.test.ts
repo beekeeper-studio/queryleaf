@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { testSetup, createLogger } from './test-setup';
+import { testSetup, createLogger, ensureArray } from './test-setup';
 
 const log = createLogger('array-access');
 
@@ -45,7 +45,7 @@ describe('Array Access Integration Tests', () => {
       WHERE items__ARRAY_0__name = 'Widget'
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     log('Array access filter results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify that filtering by array element works
@@ -93,7 +93,7 @@ describe('Array Access Integration Tests', () => {
       WHERE items__ARRAY_0__name = 'Widget' AND items__ARRAY_1__inStock = true
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     log('Array indices filtering results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only the order with Widget as first item and inStock=true for second item
@@ -136,7 +136,7 @@ describe('Array Access Integration Tests', () => {
       WHERE orderId = 'ORD-2001'
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     log('Order items query results:', JSON.stringify(results, null, 2));
     
     // Basic validation
@@ -187,7 +187,7 @@ describe('Array Access Integration Tests', () => {
       WHERE items__ARRAY_1__category = 'Electronics'
     `;
     
-    const indexResults = await queryLeaf.execute(indexAccessSql);
+    const indexResults = ensureArray(await queryLeaf.execute(indexAccessSql));
     log('Array index access results:', JSON.stringify(indexResults, null, 2));
     
     // Verify we can find orders by array index properties

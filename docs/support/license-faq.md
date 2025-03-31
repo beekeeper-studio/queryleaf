@@ -1,5 +1,9 @@
 # License FAQ
 
+## Managing existing licenses
+
+Go to the [QueryLeaf Billing Dashboard](https://billing.stripe.com/p/login/bIYdRKdtcfklgdqaEE) to manage existing subscriptions
+
 ## General Questions
 
 ### What license does QueryLeaf use?
@@ -41,7 +45,7 @@ The Commercial License prohibits:
 - Removing copyright notices
 
 ### Do I need a license for each developer or for each deployment?
-Our pricing is structured per developer for the Developer License. The Business License covers unlimited developers. There are no additional per-deployment or per-server fees.
+Pricing is tiered based on the number of developers at your organization, and the number of MongoDB servers you will be using QueryLeaf with. See the pricing section on the [homepage](/) for more information.
 
 ### Do I need to purchase a separate license for the PostgreSQL Server?
 No, all server components (Web Server and PostgreSQL Server) are included in the same Commercial License. There's no need to purchase separate licenses for different components.

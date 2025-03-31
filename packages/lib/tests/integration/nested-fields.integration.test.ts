@@ -1,7 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { testSetup, createLogger } from './test-setup';
-
-const log = createLogger('nested-fields');
+import { testSetup } from './test-setup';
 
 describe('Nested Fields Integration Tests', () => {
   beforeAll(async () => {
@@ -62,8 +60,7 @@ describe('Nested Fields Integration Tests', () => {
     `;
     
     const results = await queryLeaf.execute(sql);
-    log('Nested fields results:', JSON.stringify(results, null, 2));
-    
+
     // Assert: Verify we can access the data
     expect(results).toHaveLength(1);
     expect(results[0].name).toBe('John Smith');
@@ -113,17 +110,8 @@ describe('Nested Fields Integration Tests', () => {
       FROM contact_profiles
       WHERE contact.address.city = 'Boston'
     `;
-    
-    log('Running nested field query:', sql);
-    
-    // Try direct MongoDB query to verify data exists
-    const directQueryResults = await testSetup.getDb().collection('contact_profiles')
-      .find({'contact.address.city': 'Boston'})
-      .toArray();
-    log('Direct MongoDB query results:', JSON.stringify(directQueryResults, null, 2));
-    
+
     const results = await queryLeaf.execute(sql);
-    log('Nested filter results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only Bostonians are returned
     expect(results).toHaveLength(2);
@@ -176,7 +164,6 @@ describe('Nested Fields Integration Tests', () => {
     `;
     
     const results = await queryLeaf.execute(sql);
-    log('Nested comparison results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only products matching nested criteria are returned
     expect(results).toHaveLength(2);
@@ -227,11 +214,7 @@ describe('Nested Fields Integration Tests', () => {
         }
       }
     ]);
-    
-    // Act - first check with direct MongoDB query to confirm data
-    const directLaptopQuery = await db.collection('products').findOne({ name: 'Laptop' });
-    log('Direct laptop query result:', JSON.stringify(directLaptopQuery, null, 2));
-    
+
     // Use QueryLeaf to query the data
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
@@ -243,13 +226,7 @@ describe('Nested Fields Integration Tests', () => {
     `;
     
     const results = await queryLeaf.execute(sql);
-    log('Nested fields query results:', JSON.stringify(results, null, 2));
-    
-    // Helper function to safely access nested properties
-    const getNestedProp = (obj: any, path: string[]) => {
-      return path.reduce((o, key) => (o && typeof o === 'object') ? o[key] : undefined, obj);
-    };
-    
+
     // Assert: Verify results count and basic structure
     expect(results).toHaveLength(2);
     
@@ -349,5 +326,85 @@ describe('Nested Fields Integration Tests', () => {
     if (phonePricing) {
       expect(phonePricing.msrp).toBe(999);
     }
+  });
+  
+  test('should select a field from a nested document without path collision', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('products').insertOne({ 
+      name: 'Tablet',
+      address: {
+        city: 'Seattle',
+        zip: '98101'
+      }
+    });
+
+    // Act: Execute a query selecting a nested field
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `
+      SELECT 
+        name,
+        address.city
+      FROM products
+      WHERE name = 'Tablet'
+    `;
+
+    const results = await queryLeaf.execute(sql);
+    
+    // Assert: Verify we can access the nested field data
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Tablet');
+    
+    // With the updated implementation, the nested field should be "pulled up" to the top level
+    // The field should be directly accessible using the field name without the parent part
+    expect(results[0].name).toBe('Tablet');
+    
+    // Field should be named with underscore notation (address_city) 
+    expect(results[0].address_city).toBe('Seattle');
+  });
+  
+  test('should select multiple fields from a nested document with flattened output', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('products').insertOne({ 
+      name: 'Monitor',
+      specs: {
+        resolution: '4K',
+        refreshRate: 144,
+        panel: 'IPS',
+        size: {
+          diagonal: 32,
+          width: 28,
+          height: 16
+        }
+      }
+    });
+    
+    // Act: Execute a query selecting multiple nested fields
+    const queryLeaf = testSetup.getQueryLeaf();
+    
+    const sql = `
+      SELECT 
+        name,
+        specs.resolution,
+        specs.refreshRate,
+        specs.size.diagonal
+      FROM products
+      WHERE name = 'Monitor'
+    `;
+    
+    const results = await queryLeaf.execute(sql);
+
+    // Assert: Verify we can access the nested field data at the top level
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Monitor');
+
+    // All nested fields should be flattened to the top level with underscore notation
+    expect(results[0].specs_resolution).toBe('4K');
+    expect(results[0].specs_refreshRate).toBe(144);
+    expect(results[0].specs_size_diagonal).toBe(32);
+    
+    // The original nested structure should not be present
+    expect(results[0].specs).toBeUndefined();
   });
 });

@@ -6,6 +6,9 @@ import { AST } from 'node-sql-parser';
 export interface SqlStatement {
   ast: AST;
   text: string;
+  metadata?: {
+    nestedFieldReplacements?: [string, string][]; // Placeholder to original field mapping
+  };
 }
 
 /**

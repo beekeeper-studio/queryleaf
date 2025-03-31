@@ -1,7 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { testSetup, createLogger } from './test-setup';
-
-const log = createLogger('nested-fields');
+import { testSetup } from './test-setup';
 
 describe('Nested Fields Integration Tests', () => {
   beforeAll(async () => {
@@ -62,8 +60,7 @@ describe('Nested Fields Integration Tests', () => {
     `;
     
     const results = await queryLeaf.execute(sql);
-    log('Nested fields results:', JSON.stringify(results, null, 2));
-    
+
     // Assert: Verify we can access the data
     expect(results).toHaveLength(1);
     expect(results[0].name).toBe('John Smith');
@@ -113,17 +110,8 @@ describe('Nested Fields Integration Tests', () => {
       FROM contact_profiles
       WHERE contact.address.city = 'Boston'
     `;
-    
-    log('Running nested field query:', sql);
-    
-    // Try direct MongoDB query to verify data exists
-    const directQueryResults = await testSetup.getDb().collection('contact_profiles')
-      .find({'contact.address.city': 'Boston'})
-      .toArray();
-    log('Direct MongoDB query results:', JSON.stringify(directQueryResults, null, 2));
-    
+
     const results = await queryLeaf.execute(sql);
-    log('Nested filter results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only Bostonians are returned
     expect(results).toHaveLength(2);
@@ -176,7 +164,6 @@ describe('Nested Fields Integration Tests', () => {
     `;
     
     const results = await queryLeaf.execute(sql);
-    log('Nested comparison results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify only products matching nested criteria are returned
     expect(results).toHaveLength(2);
@@ -227,11 +214,7 @@ describe('Nested Fields Integration Tests', () => {
         }
       }
     ]);
-    
-    // Act - first check with direct MongoDB query to confirm data
-    const directLaptopQuery = await db.collection('products').findOne({ name: 'Laptop' });
-    log('Direct laptop query result:', JSON.stringify(directLaptopQuery, null, 2));
-    
+
     // Use QueryLeaf to query the data
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
@@ -243,13 +226,7 @@ describe('Nested Fields Integration Tests', () => {
     `;
     
     const results = await queryLeaf.execute(sql);
-    log('Nested fields query results:', JSON.stringify(results, null, 2));
-    
-    // Helper function to safely access nested properties
-    const getNestedProp = (obj: any, path: string[]) => {
-      return path.reduce((o, key) => (o && typeof o === 'object') ? o[key] : undefined, obj);
-    };
-    
+
     // Assert: Verify results count and basic structure
     expect(results).toHaveLength(2);
     
@@ -361,11 +338,7 @@ describe('Nested Fields Integration Tests', () => {
         zip: '98101'
       }
     });
-    
-    // Verify the data with a direct MongoDB query
-    const directQuery = await db.collection('products').findOne({ name: 'Tablet' });
-    log('Direct query result:', JSON.stringify(directQuery, null, 2));
-    
+
     // Act: Execute a query selecting a nested field
     const queryLeaf = testSetup.getQueryLeaf();
     const sql = `
@@ -375,30 +348,12 @@ describe('Nested Fields Integration Tests', () => {
       FROM products
       WHERE name = 'Tablet'
     `;
-    
-    log('Running nested field selection query:', sql);
-    
-    // Use a direct MongoDB aggregate query to test our approach
-    const directAggregateResult = await db.collection('products').aggregate([
-      { $match: { name: 'Tablet' } },
-      { $project: { 
-          name: 1, 
-          address_city: '$address.city' 
-        } 
-      }
-    ]).toArray();
-    log('Direct aggregate result:', JSON.stringify(directAggregateResult, null, 2));
-    
-    // Use the direct MongoDB aggregation to verify the approach works
+
     const results = await queryLeaf.execute(sql);
-    log('Nested field selection results:', JSON.stringify(results, null, 2));
     
     // Assert: Verify we can access the nested field data
     expect(results).toHaveLength(1);
     expect(results[0].name).toBe('Tablet');
-    
-    // Log the structure of the results for debugging
-    log('Result structure:', JSON.stringify(results[0], null, 2));
     
     // With the updated implementation, the nested field should be "pulled up" to the top level
     // The field should be directly accessible using the field name without the parent part
@@ -438,31 +393,12 @@ describe('Nested Fields Integration Tests', () => {
       WHERE name = 'Monitor'
     `;
     
-    log('Running multiple nested field selection query:', sql);
     const results = await queryLeaf.execute(sql);
-    log('Multiple nested field selection results:', JSON.stringify(results, null, 2));
-    
+
     // Assert: Verify we can access the nested field data at the top level
     expect(results).toHaveLength(1);
     expect(results[0].name).toBe('Monitor');
-    
-    // Log the full results for debugging
-    console.log('FULL RESULTS:', JSON.stringify(results[0], null, 2));
-    console.log('AVAILABLE KEYS:', Object.keys(results[0]));
-    
-    // For debugging, execute a direct MongoDB aggregation
-    const directAggResult = await db.collection('products').aggregate([
-      { $match: { name: 'Monitor' } },
-      { $project: {
-          name: 1,
-          specs_resolution: '$specs.resolution',
-          specs_refreshRate: '$specs.refreshRate',
-          specs_size_diagonal: '$specs.size.diagonal'
-        }
-      }
-    ]).toArray();
-    console.log('DIRECT AGGREGATE:', JSON.stringify(directAggResult[0], null, 2));
-    
+
     // All nested fields should be flattened to the top level with underscore notation
     expect(results[0].specs_resolution).toBe('4K');
     expect(results[0].specs_refreshRate).toBe(144);

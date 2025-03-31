@@ -1,6 +1,4 @@
-import { testSetup, createLogger } from './test-setup';
-
-const log = createLogger('nested-update-issue');
+import { testSetup } from './test-setup';
 
 describe('Nested Fields Update Issue', () => {
   beforeAll(async () => {
@@ -89,14 +87,12 @@ describe('Nested Fields Update Issue', () => {
       SET shipping.address.country.name = 'Canada'
       WHERE name = 'Bob Johnson'
     `;
-    console.log('Deeply nested UPDATE SQL:', updateSql);
     
     // Execute the SQL via QueryLeaf
     await queryLeaf.execute(updateSql);
     
     // Get the result after the update
     const updatedCustomer = await db.collection('customers').findOne({ name: 'Bob Johnson' });
-    console.log('Deeply nested update result:', JSON.stringify(updatedCustomer, null, 2));
     
     // Assert - the deeply nested field should be updated
     expect(updatedCustomer?.shipping?.address?.country?.name).toBe('Canada');

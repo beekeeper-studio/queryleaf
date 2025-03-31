@@ -102,7 +102,7 @@ async function main() {
     }
     // Example showing how to use the cursor option
     console.log('\nUsing the returnCursor option:');
-    
+
     // Import and use the isCursor type guard from interfaces
     let cursor: FindCursor<Document> | AggregationCursor<Document> | null = null;
     try {

@@ -39,7 +39,10 @@ export class QueryLeaf {
    * @returns Query results or cursor if returnCursor is true
    * @typeParam T - The type of documents that will be returned (defaults to Document)
    */
-  async execute<T = Document>(sql: string, options?: ExecutionOptions): Promise<ExecutionResult<T>> {
+  async execute<T = Document>(
+    sql: string,
+    options?: ExecutionOptions
+  ): Promise<ExecutionResult<T>> {
     const statement = this.parse(sql);
     const commands = this.compile(statement);
     return await this.executor.execute(commands, options);

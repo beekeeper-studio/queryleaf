@@ -2,7 +2,7 @@ import { Socket } from 'net';
 import { QueryLeaf } from '@queryleaf/lib';
 import { Transform } from 'stream';
 import debugLib from 'debug';
-import { MongoClient } from 'mongodb';
+import { MongoClient, Document } from 'mongodb';
 
 const debug = debugLib('queryleaf:pg-server:protocol');
 
@@ -849,10 +849,18 @@ export class ProtocolHandler {
         const count = Array.isArray(result) ? result.length : 1;
         commandTag = `INSERT 0 ${count}`;
       } else if (queryString.trim().toUpperCase().startsWith('UPDATE')) {
-        const count = result?.modifiedCount || 0;
+        // For UPDATE commands, result should be a Document with modifiedCount
+        const count =
+          typeof result === 'object' && result !== null && 'modifiedCount' in result
+            ? (result as Document).modifiedCount || 0
+            : 0;
         commandTag = `UPDATE ${count}`;
       } else if (queryString.trim().toUpperCase().startsWith('DELETE')) {
-        const count = result?.deletedCount || 0;
+        // For DELETE commands, result should be a Document with deletedCount
+        const count =
+          typeof result === 'object' && result !== null && 'deletedCount' in result
+            ? (result as Document).deletedCount || 0
+            : 0;
         commandTag = `DELETE ${count}`;
       }
 

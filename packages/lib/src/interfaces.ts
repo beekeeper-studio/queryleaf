@@ -120,12 +120,12 @@ export interface ExecutionOptions {
 /**
  * Represents result types that can be returned by the executor
  */
-export type ExecutionResult<T = Document> = 
-  | Document[]               // Array of documents (default for FIND and AGGREGATE)
-  | Document                 // Single document or operation result (for INSERT, UPDATE, DELETE)
-  | FindCursor<T>            // Cursor from FIND command when returnCursor is true
-  | AggregationCursor<T>     // Cursor from AGGREGATE command when returnCursor is true
-  | null;                    // No result
+export type ExecutionResult<T = Document> =
+  | Document[] // Array of documents (default for FIND and AGGREGATE)
+  | Document // Single document or operation result (for INSERT, UPDATE, DELETE)
+  | FindCursor<T> // Cursor from FIND command when returnCursor is true
+  | AggregationCursor<T> // Cursor from AGGREGATE command when returnCursor is true
+  | null; // No result
 
 /**
  * Type guard to check if a result is a MongoDB cursor (either FindCursor or AggregationCursor)
@@ -136,7 +136,7 @@ export function isCursor<T = Document>(
   result: ExecutionResult<T>
 ): result is FindCursor<T> | AggregationCursor<T> {
   return (
-    result !== null && 
+    result !== null &&
     typeof result === 'object' &&
     'forEach' in result &&
     'toArray' in result &&
@@ -150,7 +150,10 @@ export function isCursor<T = Document>(
 export interface CommandExecutor {
   connect(): Promise<void>;
   close(): Promise<void>;
-  execute<T = Document>(commands: Command[], options?: ExecutionOptions): Promise<ExecutionResult<T>>;
+  execute<T = Document>(
+    commands: Command[],
+    options?: ExecutionOptions
+  ): Promise<ExecutionResult<T>>;
 }
 
 /**

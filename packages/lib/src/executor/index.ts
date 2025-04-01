@@ -164,10 +164,7 @@ export class MongoExecutor implements CommandExecutor {
         case 'UPDATE':
         case 'DELETE':
           // For non-cursor commands, execute them but don't return a cursor
-          await this.execute([command]);
-          result = null;
-          break;
-
+          throw new Error(`Cannot return cursor for ${(command as any).type}`);
         default:
           throw new Error(`Unsupported command type: ${(command as any).type}`);
       }

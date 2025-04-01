@@ -1,29 +1,7 @@
 import { testSetup, createLogger } from './test-setup';
-import { isCursor } from '../../src/interfaces';
 import { Document, FindCursor, AggregationCursor } from 'mongodb';
 
 const log = createLogger('cursor');
-
-/**
- * Helper function to get a cursor from queryLeaf execution
- * This makes the tests more readable and handles type checking
- */
-async function getCursor(
-  queryLeaf: any, 
-  sql: string, 
-  options = { returnCursor: true }
-): Promise<FindCursor<Document> | AggregationCursor<Document>> {
-  const result = await queryLeaf.execute(sql, options);
-  
-  // Verify we got a cursor back
-  expect(isCursor(result)).toBe(true);
-  
-  if (!isCursor(result)) {
-    throw new Error('Expected a cursor but got a different result type');
-  }
-  
-  return result;
-}
 
 describe('MongoDB Cursor Functionality Tests', () => {
   beforeAll(async () => {
@@ -102,16 +80,12 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const result = await queryLeaf.execute('SELECT * FROM test_cursor', { returnCursor: true });
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor');
     
     // Assert
-    expect(result).toBeDefined();
-    // Use type guard to check that we got a cursor
-    expect(isCursor(result)).toBe(true);
-    
-    // Now that we've confirmed it's a cursor, we can safely assert on cursor methods
-    if (isCursor(result)) {
-      const cursor = result;
+    expect(cursor).not.toBeNull();
+
+    if (cursor) {
       expect(typeof cursor.toArray).toBe('function');
       expect(typeof cursor.forEach).toBe('function');
       expect(typeof cursor.next).toBe('function');
@@ -127,10 +101,12 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor');
+
+    expect(cursor).not.toBeNull();
     
     const results: any[] = [];
-    await cursor.forEach((doc: any) => {
+    await cursor?.forEach((doc: any) => {
       results.push(doc);
     });
     
@@ -139,7 +115,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     expect(results[0].name).toBeDefined();
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 
   test('should be able to get all results with toArray from cursor', async () => {
@@ -147,15 +123,16 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
-    const results = await cursor.toArray();
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor');
+    expect(cursor).not.toBeNull();
+    const results = await cursor?.toArray();
     
     // Assert
     expect(Array.isArray(results)).toBe(true);
-    expect(results.length).toBe(30);
+    expect(results?.length).toBe(30);
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 
   test('should be able to use next and hasNext with cursor', async () => {
@@ -163,21 +140,22 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor');
     
     // Assert
+    expect(cursor).not.toBeNull();
     // Check if we have documents
-    expect(await cursor.hasNext()).toBe(true);
+    expect(await cursor?.hasNext()).toBe(true);
     
     // Get the first document
-    const firstDoc = await cursor.next();
+    const firstDoc = await cursor?.next();
     expect(firstDoc).toBeDefined();
     expect(firstDoc?.name).toBeDefined();
     
     // Get remaining documents
     const docs: any[] = [];
-    while (await cursor.hasNext()) {
-      const doc = await cursor.next();
+    while (await cursor?.hasNext()) {
+      const doc = await cursor?.next();
       docs.push(doc);
     }
     
@@ -185,7 +163,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     expect(docs.length).toBe(29);
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 
   test('should work with returnCursor for filtered queries', async () => {
@@ -193,21 +171,23 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await getCursor(queryLeaf, "SELECT * FROM test_cursor WHERE category = 'Electronics'");
+    const cursor = await queryLeaf.executeCursor("SELECT * FROM test_cursor WHERE category = 'Electronics'");
+
+    expect(cursor).not.toBeNull();
     
-    const results = await cursor.toArray();
+    const results = await cursor?.toArray();
     
     // Assert
     // With our test data generation logic (5 categories), we expect 6 Electronics products
     const expectedElectronicsCount = Math.ceil(30 / 5); // 30 products / 5 categories
-    expect(results.length).toBe(expectedElectronicsCount);
+    expect(results?.length).toBe(expectedElectronicsCount);
     // Check that all results are from Electronics category
-    results.forEach(product => {
+    results?.forEach(product => {
       expect(product.category).toBe('Electronics');
     });
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 
   test('should work with returnCursor for sorted queries', async () => {
@@ -215,9 +195,13 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor ORDER BY price DESC');
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor ORDER BY price DESC');
+
+    expect(cursor).not.toBeNull()
     
-    const results = await cursor.toArray();
+    const results = await cursor?.toArray();
+
+    if (!results) throw new Error('failed to get array from cursor');
     
     // Assert
     expect(results.length).toBe(30);
@@ -227,7 +211,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     expect(results[1].price).toBe(155); // Product 29: 10 + (29 * 5) = 155
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 
   test('should work with returnCursor for aggregation queries', async () => {
@@ -243,10 +227,11 @@ describe('MongoDB Cursor Functionality Tests', () => {
     log('Direct MongoDB aggregate result:', JSON.stringify(directAggregateResult, null, 2));
     
     // Act
-    const cursor = await getCursor(queryLeaf, 'SELECT category, COUNT(*) as count FROM test_cursor GROUP BY category');
+    const cursor = await queryLeaf.executeCursor('SELECT category, COUNT(*) as count FROM test_cursor GROUP BY category');
     
     // Get the results and log them
-    const results = await cursor.toArray();
+    const results = await cursor?.toArray();
+    if (!results) throw new Error('failed to get array from cursor');
     log('GROUP BY cursor results:', JSON.stringify(results, null, 2));
     
     // Assert
@@ -268,7 +253,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     expect(uniqueCategories.size).toBeGreaterThan(0);
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 
   test('should respect cursor limit and skip options', async () => {
@@ -276,15 +261,16 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act - Use LIMIT and OFFSET in SQL
-    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor LIMIT 2 OFFSET 1');
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor LIMIT 2 OFFSET 1');
     
-    const results = await cursor.toArray();
+    const results = await cursor?.toArray();
+    if (!results) throw new Error('failed to get array from cursor');
     
     // Assert
     expect(results.length).toBe(2); // Limited to 2 records
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 
   test('should properly close the cursor', async () => {
@@ -292,13 +278,13 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor');
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor');
     
     // Get some results first to ensure the cursor is actually used
-    expect(await cursor.hasNext()).toBe(true);
+    expect(await cursor?.hasNext()).toBe(true);
     
     // Now close the cursor
-    await cursor.close();
+    await cursor?.close();
     
     // Assert - at this point, we can't really test if the cursor is closed
     // in a reliable way without accessing MongoDB internals
@@ -310,7 +296,7 @@ describe('MongoDB Cursor Functionality Tests', () => {
     const queryLeaf = testSetup.getQueryLeaf();
     
     // Act
-    const cursor = await getCursor(queryLeaf, 'SELECT * FROM test_cursor ORDER BY price ASC');
+    const cursor = await queryLeaf.executeCursor('SELECT * FROM test_cursor ORDER BY price ASC');
     
     // Manual iteration to test batching behavior
     // Default MongoDB batch size is 20, so we need to iterate beyond that
@@ -318,8 +304,8 @@ describe('MongoDB Cursor Functionality Tests', () => {
     // First, get a batch of items iteratively
     const firstBatchItems: any[] = [];
     for (let i = 0; i < 25; i++) {
-      expect(await cursor.hasNext()).toBe(true); // Should still have more
-      const item = await cursor.next();
+      expect(await cursor?.hasNext()).toBe(true); // Should still have more
+      const item = await cursor?.next();
       expect(item).toBeDefined();
       firstBatchItems.push(item);
     }
@@ -328,12 +314,12 @@ describe('MongoDB Cursor Functionality Tests', () => {
     expect(firstBatchItems.length).toBe(25);
     
     // Verify we still have more items
-    expect(await cursor.hasNext()).toBe(true);
+    expect(await cursor?.hasNext()).toBe(true);
     
     // Get the remaining items
     const remainingItems: any[] = [];
-    while (await cursor.hasNext()) {
-      const item = await cursor.next();
+    while (await cursor?.hasNext()) {
+      const item = await cursor?.next();
       remainingItems.push(item);
     }
     
@@ -347,6 +333,6 @@ describe('MongoDB Cursor Functionality Tests', () => {
     }
     
     // Clean up
-    await cursor.close();
+    await cursor?.close();
   });
 });

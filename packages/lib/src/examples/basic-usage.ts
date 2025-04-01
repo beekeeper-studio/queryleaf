@@ -1,4 +1,4 @@
-import { QueryLeaf, isCursor } from '../index';
+import { QueryLeaf, CursorResult } from '../index';
 import { Document, FindCursor, AggregationCursor, MongoClient } from 'mongodb';
 
 /**
@@ -100,27 +100,23 @@ async function main() {
         console.error('Error:', error instanceof Error ? error.message : String(error));
       }
     }
-    // Example showing how to use the cursor option
-    console.log('\nUsing the returnCursor option:');
+    // Example showing how to use the executeCursor method
+    console.log('\nUsing the executeCursor method:');
 
-    // Import and use the isCursor type guard from interfaces
-    let cursor: FindCursor<Document> | AggregationCursor<Document> | null = null;
+    let cursor: CursorResult<Document> = null;
     try {
-      // Using the returnCursor option to get a MongoDB cursor
-      const result = await queryLeaf.execute('SELECT * FROM users WHERE active = true', {
-        returnCursor: true,
-      });
+      // Using the executeCursor method to get a MongoDB cursor
+      cursor = await queryLeaf.executeCursor('SELECT * FROM users WHERE active = true');
 
-      // Check if we got a cursor back using our type guard
-      if (isCursor(result)) {
-        cursor = result;
+      // Check if we got a cursor back
+      if (cursor) {
         // Now we can use the cursor methods directly
         console.log('Iterating through cursor results with forEach:');
         await cursor.forEach((doc: any) => {
           console.log(`- User: ${doc.name}, Email: ${doc.email}`);
         });
       } else {
-        console.log('Expected a cursor but got a different result type');
+        console.log('Expected a cursor but got null (not a SELECT/FIND query)');
       }
     } catch (error) {
       console.error('Cursor error:', error instanceof Error ? error.message : String(error));

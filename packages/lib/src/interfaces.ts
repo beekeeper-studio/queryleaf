@@ -107,42 +107,20 @@ export interface SqlCompiler {
 }
 
 /**
- * Options for query execution
- */
-export interface ExecutionOptions {
-  /**
-   * If true, return the MongoDB cursor instead of an array of results
-   * This only applies to FIND and AGGREGATE commands, other commands always return their result
-   */
-  returnCursor?: boolean;
-}
-
-/**
  * Represents result types that can be returned by the executor
  */
 export type ExecutionResult<T = Document> =
   | Document[] // Array of documents (default for FIND and AGGREGATE)
   | Document // Single document or operation result (for INSERT, UPDATE, DELETE)
-  | FindCursor<T> // Cursor from FIND command when returnCursor is true
-  | AggregationCursor<T> // Cursor from AGGREGATE command when returnCursor is true
   | null; // No result
 
 /**
- * Type guard to check if a result is a MongoDB cursor (either FindCursor or AggregationCursor)
- * @param result The result to check
- * @returns True if the result is a cursor
+ * Represents cursor types that can be returned by the cursor executor
  */
-export function isCursor<T = Document>(
-  result: ExecutionResult<T>
-): result is FindCursor<T> | AggregationCursor<T> {
-  return (
-    result !== null &&
-    typeof result === 'object' &&
-    'forEach' in result &&
-    'toArray' in result &&
-    'close' in result
-  );
-}
+export type CursorResult<T = Document> =
+  | FindCursor<T> // Cursor from FIND command
+  | AggregationCursor<T> // Cursor from AGGREGATE command
+  | null; // No result
 
 /**
  * MongoDB command executor interface
@@ -150,17 +128,39 @@ export function isCursor<T = Document>(
 export interface CommandExecutor {
   connect(): Promise<void>;
   close(): Promise<void>;
-  execute<T = Document>(
-    commands: Command[],
-    options?: ExecutionOptions
-  ): Promise<ExecutionResult<T>>;
+  /**
+   * Execute MongoDB commands and return documents
+   * @param commands Array of commands to execute
+   * @returns Document results (no cursors)
+   */
+  execute<T = Document>(commands: Command[]): Promise<ExecutionResult<T>>;
+
+  /**
+   * Execute MongoDB commands and return cursors for FIND and AGGREGATE commands
+   * @param commands Array of commands to execute
+   * @returns Cursor for FIND and AGGREGATE commands, null for other commands
+   */
+  executeCursor<T = Document>(commands: Command[]): Promise<CursorResult<T>>;
 }
 
 /**
  * Main QueryLeaf interface
  */
 export interface QueryLeaf {
-  execute<T = Document>(sql: string, options?: ExecutionOptions): Promise<ExecutionResult<T>>;
+  /**
+   * Execute a SQL query and return documents
+   * @param sql SQL query string
+   * @returns Document results (no cursors)
+   */
+  execute<T = Document>(sql: string): Promise<ExecutionResult<T>>;
+
+  /**
+   * Execute a SQL query and return a cursor for SELECT queries
+   * @param sql SQL query string
+   * @returns Cursor for SELECT queries, null for other queries
+   */
+  executeCursor<T = Document>(sql: string): Promise<CursorResult<T>>;
+
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
   getExecutor(): CommandExecutor;
@@ -168,7 +168,8 @@ export interface QueryLeaf {
 }
 
 export interface Squongo extends QueryLeaf {
-  execute<T = Document>(sql: string, options?: ExecutionOptions): Promise<ExecutionResult<T>>;
+  execute<T = Document>(sql: string): Promise<ExecutionResult<T>>;
+  executeCursor<T = Document>(sql: string): Promise<CursorResult<T>>;
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
   getExecutor(): CommandExecutor;

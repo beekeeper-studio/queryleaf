@@ -1,5 +1,5 @@
 import { MongoTestContainer, loadFixtures, testUsers, testProducts, testOrders } from '../utils/mongo-container';
-import { QueryLeaf, ExecutionResult, isCursor } from '../../src/index';
+import { QueryLeaf, ExecutionResult } from '../../src/index';
 import { Db, Document } from 'mongodb';
 import debug from 'debug';
 
@@ -86,10 +86,9 @@ export function ensureArray<T = Document>(result: ExecutionResult<T>): Array<T> 
  * @returns The result as a Document (throws if it's an array or cursor)
  */
 export function ensureDocument(result: ExecutionResult<Document>): Document {
-  if (Array.isArray(result) || isCursor(result) || result === null) {
+  if (Array.isArray(result) || result === null) {
     throw new Error('Expected result to be a document, but got: ' + 
       (Array.isArray(result) ? 'array' : 
-       isCursor(result) ? 'cursor' : 
        result === null ? 'null' : typeof result));
   }
   return result;

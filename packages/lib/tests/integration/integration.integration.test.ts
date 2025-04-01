@@ -1,6 +1,6 @@
 import { MongoTestContainer, loadFixtures, testUsers, testProducts, testOrders } from '../utils/mongo-container';
 import { ObjectId } from 'mongodb';
-import { isCursor, QueryLeaf } from '../../src/index';
+import { QueryLeaf } from '../../src/index';
 import { createLogger } from './test-setup';
 import { ensureArray, ensureDocument } from './test-setup';
 
@@ -469,10 +469,8 @@ describe('QueryLeaf Integration Tests', () => {
       const productId = testProducts[0]._id;
       const sql = `UPDATE products SET price = 1300 WHERE _id = '${productId.toString()}'`;
       
-      const result = await queryLeaf.execute(sql);
+      const result = ensureDocument(await queryLeaf.execute(sql));
 
-      if (!result || isCursor(result) || Array.isArray(result)) throw new Error('Wrong type received from queryleaf');
-      
       expect(result.acknowledged).toBe(true);
       expect(result.modifiedCount).toBe(1);
       
@@ -489,10 +487,8 @@ describe('QueryLeaf Integration Tests', () => {
       const orderId = testOrders[4]._id;
       const sql = `DELETE FROM orders WHERE _id = '${orderId.toString()}'`;
       
-      const result = await queryLeaf.execute(sql);
+      const result = ensureDocument(await queryLeaf.execute(sql));
 
-      if (!result || isCursor(result) || Array.isArray(result)) throw new Error('Wrong type received from queryleaf');
-      
       expect(result.acknowledged).toBe(true);
       expect(result.deletedCount).toBe(1);
       

@@ -1,4 +1,5 @@
 import { AST } from 'node-sql-parser';
+import { Document, FindCursor, AggregationCursor } from 'mongodb';
 
 /**
  * Represents a parsed SQL statement
@@ -106,19 +107,60 @@ export interface SqlCompiler {
 }
 
 /**
+ * Represents result types that can be returned by the executor
+ */
+export type ExecutionResult<T = Document> =
+  | Document[] // Array of documents (default for FIND and AGGREGATE)
+  | Document // Single document or operation result (for INSERT, UPDATE, DELETE)
+  | null; // No result
+
+/**
+ * Represents cursor types that can be returned by the cursor executor
+ */
+export type CursorResult<T = Document> =
+  | FindCursor<T> // Cursor from FIND command
+  | AggregationCursor<T> // Cursor from AGGREGATE command
+  | null; // No result
+
+/**
  * MongoDB command executor interface
  */
 export interface CommandExecutor {
   connect(): Promise<void>;
   close(): Promise<void>;
-  execute(commands: Command[]): Promise<any>;
+  /**
+   * Execute MongoDB commands and return documents
+   * @param commands Array of commands to execute
+   * @returns Document results (no cursors)
+   */
+  execute<T = Document>(commands: Command[]): Promise<ExecutionResult<T>>;
+
+  /**
+   * Execute MongoDB commands and return cursors for FIND and AGGREGATE commands
+   * @param commands Array of commands to execute
+   * @returns Cursor for FIND and AGGREGATE commands, null for other commands
+   */
+  executeCursor<T = Document>(commands: Command[]): Promise<CursorResult<T>>;
 }
 
 /**
  * Main QueryLeaf interface
  */
 export interface QueryLeaf {
-  execute(sql: string): Promise<any>;
+  /**
+   * Execute a SQL query and return documents
+   * @param sql SQL query string
+   * @returns Document results (no cursors)
+   */
+  execute<T = Document>(sql: string): Promise<ExecutionResult<T>>;
+
+  /**
+   * Execute a SQL query and return a cursor for SELECT queries
+   * @param sql SQL query string
+   * @returns Cursor for SELECT queries, null for other queries
+   */
+  executeCursor<T = Document>(sql: string): Promise<CursorResult<T>>;
+
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
   getExecutor(): CommandExecutor;
@@ -126,7 +168,8 @@ export interface QueryLeaf {
 }
 
 export interface Squongo extends QueryLeaf {
-  execute(sql: string): Promise<any>;
+  execute<T = Document>(sql: string): Promise<ExecutionResult<T>>;
+  executeCursor<T = Document>(sql: string): Promise<CursorResult<T>>;
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
   getExecutor(): CommandExecutor;

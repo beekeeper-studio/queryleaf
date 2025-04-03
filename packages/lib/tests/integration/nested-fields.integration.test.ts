@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { testSetup } from './test-setup';
+import { testSetup, ensureArray, ensureDocument } from './test-setup';
 
 describe('Nested Fields Integration Tests', () => {
   beforeAll(async () => {
@@ -59,7 +59,7 @@ describe('Nested Fields Integration Tests', () => {
       WHERE name = 'John Smith'
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
 
     // Assert: Verify we can access the data
     expect(results).toHaveLength(1);
@@ -111,7 +111,7 @@ describe('Nested Fields Integration Tests', () => {
       WHERE contact.address.city = 'Boston'
     `;
 
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert: Verify only Bostonians are returned
     expect(results).toHaveLength(2);
@@ -163,7 +163,7 @@ describe('Nested Fields Integration Tests', () => {
       AND details.price < 1400
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert: Verify only products matching nested criteria are returned
     expect(results).toHaveLength(2);
@@ -225,7 +225,7 @@ describe('Nested Fields Integration Tests', () => {
       FROM products
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
 
     // Assert: Verify results count and basic structure
     expect(results).toHaveLength(2);
@@ -349,7 +349,7 @@ describe('Nested Fields Integration Tests', () => {
       WHERE name = 'Tablet'
     `;
 
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
     
     // Assert: Verify we can access the nested field data
     expect(results).toHaveLength(1);
@@ -393,7 +393,7 @@ describe('Nested Fields Integration Tests', () => {
       WHERE name = 'Monitor'
     `;
     
-    const results = await queryLeaf.execute(sql);
+    const results = ensureArray(await queryLeaf.execute(sql));
 
     // Assert: Verify we can access the nested field data at the top level
     expect(results).toHaveLength(1);

@@ -1,5 +1,13 @@
-import { SqlStatement, Command, SqlParser, SqlCompiler, CommandExecutor } from './interfaces';
-import { MongoClient } from 'mongodb';
+import {
+  SqlStatement,
+  Command,
+  SqlParser,
+  SqlCompiler,
+  CommandExecutor,
+  ExecutionResult,
+  CursorResult,
+} from './interfaces';
+import { Document, MongoClient } from 'mongodb';
 import { SqlParserImpl } from './parser';
 import { SqlCompilerImpl } from './compiler';
 import { MongoExecutor } from './executor';
@@ -25,14 +33,27 @@ export class QueryLeaf {
   }
 
   /**
-   * Execute a SQL query on MongoDB
+   * Execute a SQL query on MongoDB and return documents
    * @param sql SQL query string
-   * @returns Query results
+   * @returns Document results (no cursors)
+   * @typeParam T - The type of documents that will be returned (defaults to Document)
    */
-  async execute(sql: string): Promise<any> {
+  async execute<T = Document>(sql: string): Promise<ExecutionResult<T>> {
     const statement = this.parse(sql);
     const commands = this.compile(statement);
     return await this.executor.execute(commands);
+  }
+
+  /**
+   * Execute a SQL query on MongoDB and return a cursor
+   * @param sql SQL query string
+   * @returns Cursor for SELECT queries, null for other queries
+   * @typeParam T - The type of documents that will be returned (defaults to Document)
+   */
+  async executeCursor<T = Document>(sql: string): Promise<CursorResult<T>> {
+    const statement = this.parse(sql);
+    const commands = this.compile(statement);
+    return await this.executor.executeCursor(commands);
   }
 
   /**
@@ -91,6 +112,8 @@ export {
   SqlParser,
   SqlCompiler,
   CommandExecutor,
+  ExecutionResult,
+  CursorResult,
   SqlParserImpl,
   SqlCompilerImpl,
   MongoExecutor,

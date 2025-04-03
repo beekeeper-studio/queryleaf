@@ -1,5 +1,5 @@
-import { QueryLeaf } from '../index';
-import { MongoClient } from 'mongodb';
+import { QueryLeaf, CursorResult } from '../index';
+import { Document, FindCursor, AggregationCursor, MongoClient } from 'mongodb';
 
 /**
  * Example showing how to use QueryLeaf with an existing MongoDB client
@@ -98,6 +98,32 @@ async function main() {
         console.log('Result:', JSON.stringify(result, null, 2));
       } catch (error) {
         console.error('Error:', error instanceof Error ? error.message : String(error));
+      }
+    }
+    // Example showing how to use the executeCursor method
+    console.log('\nUsing the executeCursor method:');
+
+    let cursor: CursorResult<Document> = null;
+    try {
+      // Using the executeCursor method to get a MongoDB cursor
+      cursor = await queryLeaf.executeCursor('SELECT * FROM users WHERE active = true');
+
+      // Check if we got a cursor back
+      if (cursor) {
+        // Now we can use the cursor methods directly
+        console.log('Iterating through cursor results with forEach:');
+        await cursor.forEach((doc: any) => {
+          console.log(`- User: ${doc.name}, Email: ${doc.email}`);
+        });
+      } else {
+        console.log('Expected a cursor but got null (not a SELECT/FIND query)');
+      }
+    } catch (error) {
+      console.error('Cursor error:', error instanceof Error ? error.message : String(error));
+    } finally {
+      // Always close the cursor when done
+      if (cursor) {
+        await cursor.close();
       }
     }
   } finally {

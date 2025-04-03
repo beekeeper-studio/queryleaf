@@ -50,7 +50,16 @@ The main class that ties everything together. It provides a simple API to execut
 
 ```typescript
 const queryLeaf = new QueryLeaf(mongoClient, 'mydatabase');
+
+// Execute a query and get all results as an array
 const results = await queryLeaf.execute('SELECT * FROM users');
+
+// Or use a cursor for more control and memory efficiency
+const cursor = await queryLeaf.executeCursor('SELECT * FROM users');
+await cursor.forEach(user => {
+  console.log(`Processing user: ${user.name}`);
+});
+await cursor.close();
 ```
 
 ### DummyQueryLeaf
@@ -61,6 +70,13 @@ A special implementation of QueryLeaf that doesn't execute real MongoDB operatio
 const dummyLeaf = new DummyQueryLeaf('mydatabase');
 await dummyLeaf.execute('SELECT * FROM users');
 // [DUMMY MongoDB] FIND in mydatabase.users with filter: {}
+
+// Cursor support works with DummyQueryLeaf too
+const cursor = await dummyLeaf.executeCursor('SELECT * FROM users');
+await cursor.forEach(user => {
+  // Process mock data
+});
+await cursor.close();
 ```
 
 ## Relationship Between SQL and MongoDB Concepts
@@ -101,14 +117,31 @@ QueryLeaf uses specific naming conventions for mapping SQL to MongoDB:
 
 ## Execution Flow
 
+QueryLeaf supports two main execution methods:
+
+### Standard Execution
+
 When you call `queryLeaf.execute(sqlQuery)`, the following happens:
 
 1. The SQL query is parsed into an AST
 2. The AST is compiled into MongoDB commands
 3. The commands are executed against the MongoDB database
-4. The results are returned
+4. All results are loaded into memory and returned as an array
 
-If any step fails, an error is thrown with details about what went wrong.
+This is simple to use but can be memory-intensive for large result sets.
+
+### Cursor Execution
+
+When you call `queryLeaf.executeCursor(sqlQuery)`, the following happens:
+
+1. The SQL query is parsed into an AST
+2. The AST is compiled into MongoDB commands
+3. For SELECT queries, a MongoDB cursor is returned instead of loading all results
+4. You control how and when results are processed (streaming/batching)
+
+This approach is more memory-efficient for large datasets and gives you more control.
+
+If any step fails in either approach, an error is thrown with details about what went wrong.
 
 ## Extending QueryLeaf
 

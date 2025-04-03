@@ -1,5 +1,5 @@
-import { CommandExecutor, Command } from '../interfaces';
-import { MongoClient, ObjectId } from 'mongodb';
+import { CommandExecutor, Command, ExecutionResult, CursorResult } from '../interfaces';
+import { Document, MongoClient, ObjectId } from 'mongodb';
 
 /**
  * MongoDB command executor implementation for Node.js
@@ -33,13 +33,13 @@ export class MongoExecutor implements CommandExecutor {
   }
 
   /**
-   * Execute a series of MongoDB commands
+   * Execute a series of MongoDB commands and return documents
    * @param commands Array of commands to execute
-   * @returns Result of the last command
+   * @returns Result of the last command as documents (not cursors)
+   * @typeParam T - The type of documents that will be returned (defaults to Document)
    */
-  async execute(commands: Command[]): Promise<any> {
+  async execute<T = Document>(commands: Command[]): Promise<ExecutionResult<T>> {
     // We assume the client is already connected
-
     const database = this.client.db(this.dbName);
 
     // Execute each command in sequence
@@ -69,6 +69,7 @@ export class MongoExecutor implements CommandExecutor {
             findCursor.limit(command.limit);
           }
 
+          // Always return array for the regular execute
           result = await findCursor.toArray();
           break;
 
@@ -96,7 +97,10 @@ export class MongoExecutor implements CommandExecutor {
         case 'AGGREGATE':
           // Handle aggregation commands
           const pipeline = command.pipeline.map((stage) => this.convertObjectIds(stage));
-          result = await database.collection(command.collection).aggregate(pipeline).toArray();
+          const aggregateCursor = database.collection(command.collection).aggregate(pipeline);
+
+          // Always return array for the regular execute
+          result = await aggregateCursor.toArray();
           break;
 
         default:
@@ -105,6 +109,68 @@ export class MongoExecutor implements CommandExecutor {
     }
 
     return result;
+  }
+
+  /**
+   * Execute a series of MongoDB commands and return cursors
+   * @param commands Array of commands to execute
+   * @returns Cursor for FIND and AGGREGATE commands, null for other commands
+   * @typeParam T - The type of documents that will be returned (defaults to Document)
+   */
+  async executeCursor<T = Document>(commands: Command[]): Promise<CursorResult<T>> {
+    // We assume the client is already connected
+    const database = this.client.db(this.dbName);
+
+    // Execute each command in sequence, but only return a cursor for the last command
+    // if it's a FIND or AGGREGATE
+    let result = null;
+
+    for (const command of commands) {
+      switch (command.type) {
+        case 'FIND':
+          const findCursor = database
+            .collection(command.collection)
+            .find(this.convertObjectIds(command.filter || {}));
+
+          // Apply projection if specified
+          if (command.projection) {
+            findCursor.project(command.projection);
+          }
+
+          // Apply sorting if specified
+          if (command.sort) {
+            findCursor.sort(command.sort);
+          }
+
+          // Apply pagination if specified
+          if (command.skip) {
+            findCursor.skip(command.skip);
+          }
+          if (command.limit && command.limit > 0) {
+            findCursor.limit(command.limit);
+          }
+
+          // Return the cursor directly
+          result = findCursor;
+          break;
+
+        case 'AGGREGATE':
+          // Handle aggregation commands
+          const pipeline = command.pipeline.map((stage) => this.convertObjectIds(stage));
+          result = database.collection(command.collection).aggregate(pipeline);
+          break;
+
+        case 'INSERT':
+        case 'UPDATE':
+        case 'DELETE':
+          // For non-cursor commands, execute them but don't return a cursor
+          throw new Error(`Cannot return cursor for ${(command as any).type}`);
+        default:
+          throw new Error(`Unsupported command type: ${(command as any).type}`);
+      }
+    }
+
+    return result as CursorResult<T>;
   }
 
   /**

@@ -73,6 +73,37 @@ const usersInNY = await queryLeaf.execute(`
 `);
 ```
 
+### Using Cursors for Large Result Sets
+
+```typescript
+// Use cursor for memory-efficient processing of large result sets
+const cursor = await queryLeaf.executeCursor(`
+  SELECT _id, customer, total, items
+  FROM orders
+  WHERE status = 'completed'
+`);
+
+try {
+  // Process one document at a time without loading everything in memory
+  let totalRevenue = 0;
+  await cursor.forEach(order => {
+    // Process each order individually
+    totalRevenue += order.total;
+    
+    // Access and process nested data
+    order.items.forEach(item => {
+      // Process each item in the order
+      console.log(`Order ${order._id}: ${item.quantity}x ${item.name}`);
+    });
+  });
+  
+  console.log(`Total revenue: $${totalRevenue}`);
+} finally {
+  // Always close the cursor when done
+  await cursor.close();
+}
+```
+
 ### Array Element Access
 
 ```typescript
@@ -169,11 +200,11 @@ async function getUserDashboardData(userId) {
 }
 ```
 
-### Product Catalog with Filtering
+### Product Catalog with Filtering and Cursor-Based Pagination
 
 ```typescript
-// Product catalog with filtering
-async function getProductCatalog(filters = {}) {
+// Product catalog with filtering and cursor-based pagination
+async function getProductCatalog(filters = {}, useCursor = false) {
   const client = new MongoClient('mongodb://localhost:27017');
   await client.connect();
   
@@ -217,9 +248,52 @@ async function getProductCatalog(filters = {}) {
       query += ` LIMIT ${filters.limit}`;
     }
     
-    // Execute query
-    return await queryLeaf.execute(query);
+    if (filters.offset) {
+      query += ` OFFSET ${filters.offset}`;
+    }
+    
+    // Execute query with or without cursor based on preference
+    if (useCursor) {
+      // Return a cursor for client-side pagination or streaming
+      return await queryLeaf.executeCursor(query);
+    } else {
+      // Return all results at once (traditional approach)
+      return await queryLeaf.execute(query);
+    }
+  } catch (error) {
+    console.error('Error fetching product catalog:', error);
+    throw error;
   } finally {
+    if (!useCursor) {
+      // If we returned a cursor, the caller is responsible for closing the client
+      // after they are done with the cursor
+      await client.close();
+    }
+  }
+}
+
+// Example of using the product catalog with cursor
+async function streamProductCatalog() {
+  const client = new MongoClient('mongodb://localhost:27017');
+  await client.connect();
+  
+  let cursor = null;
+  try {
+    const queryLeaf = new QueryLeaf(client, 'store');
+    // Get a cursor for large result set
+    cursor = await getProductCatalog({ category: 'Electronics', inStock: true }, true);
+    
+    // Stream products to client one by one
+    console.log('Streaming products:');
+    await cursor.forEach(product => {
+      console.log(`- ${product.name}: $${product.price} (${product.stock} in stock)`);
+    });
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    // Close cursor if we have one
+    if (cursor) await cursor.close();
+    // Close client connection
     await client.close();
   }
 }

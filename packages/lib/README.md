@@ -21,7 +21,7 @@
   - Array element access (e.g., `items[0].name`)
   - GROUP BY with aggregation functions (COUNT, SUM, AVG, MIN, MAX)
   - JOINs between collections
-  - Option to return MongoDB cursor for fine-grained result processing
+  - Direct MongoDB cursor access for fine-grained result processing and memory efficiency
 
 ## Installation
 
@@ -48,8 +48,8 @@ const queryLeaf = new QueryLeaf(mongoClient, 'mydatabase');
 const results = await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
 console.log(results);
 
-// Get a MongoDB cursor for more control over result processing
-const cursor = await queryLeaf.execute('SELECT * FROM users WHERE age > 30', { returnCursor: true });
+// Get a MongoDB cursor for more control over result processing and memory efficiency
+const cursor = await queryLeaf.executeCursor('SELECT * FROM users WHERE age > 30');
 await cursor.forEach((doc) => {
   console.log(`User: ${doc.name}`);
 });
@@ -73,8 +73,8 @@ const queryLeaf = new DummyQueryLeaf('mydatabase');
 await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
 // [DUMMY MongoDB] FIND in mydatabase.users with filter: { "age": { "$gt": 21 } }
 
-// You can also use the cursor option with DummyQueryLeaf
-const cursor = await queryLeaf.execute('SELECT * FROM users LIMIT 10', { returnCursor: true });
+// You can also use cursor functionality with DummyQueryLeaf
+const cursor = await queryLeaf.executeCursor('SELECT * FROM users LIMIT 10');
 await cursor.forEach((doc) => {
   // Process each document
 });
@@ -98,6 +98,42 @@ SELECT status, COUNT(*) as count FROM orders GROUP BY status
 
 -- JOIN between collections
 SELECT u.name, o.total FROM users u JOIN orders o ON u._id = o.userId
+```
+
+## Working with Cursors
+
+When working with large result sets, using MongoDB cursors directly can be more memory-efficient and gives you more control over result processing:
+
+```typescript
+// Get a cursor for a SELECT query
+const cursor = await queryLeaf.executeCursor('SELECT * FROM products WHERE price > 100');
+
+// Option 1: Convert to array (loads all results into memory)
+const results = await cursor.toArray();
+console.log(`Found ${results.length} products`);
+
+// Option 2: Iterate with forEach (memory efficient)
+await cursor.forEach(product => {
+  console.log(`Processing ${product.name}...`);
+});
+
+// Option 3: Manual iteration with next/hasNext (most control)
+while (await cursor.hasNext()) {
+  const product = await cursor.next();
+  // Process each product individually
+  console.log(`Product: ${product.name}, $${product.price}`);
+}
+
+// Always close the cursor when done
+await cursor.close();
+```
+
+Features:
+- Returns MongoDB `FindCursor` for normal queries and `AggregationCursor` for aggregations
+- Supports all cursor methods like `forEach()`, `toArray()`, `next()`, `hasNext()`
+- Efficiently handles large result sets with MongoDB's batching system
+- Works with all advanced QueryLeaf features (filtering, sorting, aggregations, etc.)
+- Only available for read operations (SELECT queries)
 ```
 
 ## Links

@@ -46,13 +46,25 @@ await mongoClient.connect();
 Once you have a MongoDB client, you can create a QueryLeaf instance:
 
 ```typescript
-import { QueryLeaf } from 'queryleaf';
+import { QueryLeaf } from '@queryleaf/lib';
 
 // Create a QueryLeaf instance with your MongoDB client
 const queryLeaf = new QueryLeaf(mongoClient, 'mydatabase');
 
-// Now you can execute SQL queries
+// Execute SQL queries and get all results at once
 const results = await queryLeaf.execute('SELECT * FROM users');
+
+// For large result sets, use cursor execution for better memory efficiency
+const cursor = await queryLeaf.executeCursor('SELECT * FROM users');
+try {
+  // Process results one at a time
+  await cursor.forEach(user => {
+    console.log(`User: ${user.name}`);
+  });
+} finally {
+  // Always close the cursor when done
+  await cursor.close();
+}
 ```
 
 ## Connection Management
@@ -80,7 +92,7 @@ async function main() {
     // Create QueryLeaf instance
     const queryLeaf = new QueryLeaf(client, 'mydatabase');
     
-    // Execute queries
+    // Execute queries - get all results at once
     const users = await queryLeaf.execute('SELECT * FROM users LIMIT 10');
     console.log(`Found ${users.length} users`);
     
@@ -89,6 +101,23 @@ async function main() {
       'SELECT name, price FROM products WHERE category = "Electronics"'
     );
     console.log(`Found ${products.length} electronic products`);
+    
+    // For large result sets, use cursor execution
+    const ordersCursor = await queryLeaf.executeCursor(
+      'SELECT * FROM orders WHERE total > 1000'
+    );
+    try {
+      // Process results in a memory-efficient way
+      let count = 0;
+      await ordersCursor.forEach(order => {
+        console.log(`Processing order #${order.orderId}`);
+        count++;
+      });
+      console.log(`Processed ${count} high-value orders`);
+    } finally {
+      // Always close the cursor when done
+      await ordersCursor.close();
+    }
     
   } catch (error) {
     console.error('Error:', error);

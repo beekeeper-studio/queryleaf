@@ -22,8 +22,15 @@ export class SqlCompilerImpl implements SqlCompiler {
    * @param statement SQL statement to compile
    * @returns Array of MongoDB commands
    */
+  // Store the current SQL statement metadata for use in helper methods
+  private currentStatementMetadata: any;
+
   compile(statement: SqlStatement): Command[] {
     const ast = statement.ast;
+
+    // Access statement metadata which includes the nested field replacements
+    this.currentStatementMetadata = statement.metadata;
+    log('Statement metadata:', JSON.stringify(this.currentStatementMetadata, null, 2));
 
     log('Compiling SQL AST:', JSON.stringify(ast, null, 2));
 
@@ -424,10 +431,21 @@ export class SqlCompilerImpl implements SqlCompiler {
           // This requires accessing the parser's replacements, which we don't have direct access to
           // Instead, we'll need to restore it through other means
 
-          // For now, we'll assume shipping.address.country.name for demonstration
-          // In a real implementation, we'd need to pass the replacements from parser to compiler
-          fieldName = 'shipping.address.country.name';
-          log(`Restored nested field from placeholder: ${setItem.column} -> ${fieldName}`);
+          // Extract the original nested field path using metadata from the statement
+
+          // Get the metadata with nested field replacements from the statement
+          const nestedFieldReplacements = this.currentStatementMetadata?.nestedFieldReplacements;
+
+          // Check if we have metadata containing the field replacements
+          if (nestedFieldReplacements && nestedFieldReplacements.length > placeholderIndex) {
+            const [_, originalField] = nestedFieldReplacements[placeholderIndex];
+            fieldName = originalField;
+            log(`Restored nested field from metadata: ${setItem.column} -> ${fieldName}`);
+          } else {
+            // Fallback to using the placeholder itself if we can't restore it
+            fieldName = setItem.column;
+            log(`Could not restore nested field, using placeholder: ${fieldName}`);
+          }
         }
         // Special handling for nested fields in UPDATE statements
         else if (setItem.table) {

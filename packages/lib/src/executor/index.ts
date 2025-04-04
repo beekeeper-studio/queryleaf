@@ -1,4 +1,10 @@
-import { CommandExecutor, Command, ExecutionResult, CursorResult } from '../interfaces';
+import {
+  CommandExecutor,
+  Command,
+  ExecutionResult,
+  CursorResult,
+  CursorOptions,
+} from '../interfaces';
 import { Document, MongoClient, ObjectId } from 'mongodb';
 
 /**
@@ -47,27 +53,31 @@ export class MongoExecutor implements CommandExecutor {
     for (const command of commands) {
       switch (command.type) {
         case 'FIND':
-          const findCursor = database
-            .collection(command.collection)
-            .find(this.convertObjectIds(command.filter || {}));
+          // Prepare find options
+          const findOptions: any = {};
 
           // Apply projection if specified
           if (command.projection) {
-            findCursor.project(command.projection);
+            findOptions.projection = command.projection;
           }
 
           // Apply sorting if specified
           if (command.sort) {
-            findCursor.sort(command.sort);
+            findOptions.sort = command.sort;
           }
 
           // Apply pagination if specified
           if (command.skip) {
-            findCursor.skip(command.skip);
+            findOptions.skip = command.skip;
           }
           if (command.limit && command.limit > 0) {
-            findCursor.limit(command.limit);
+            findOptions.limit = command.limit;
           }
+
+          // Create the cursor with all options at once
+          const findCursor = database
+            .collection(command.collection)
+            .find(this.convertObjectIds(command.filter || {}), findOptions);
 
           // Always return array for the regular execute
           result = await findCursor.toArray();
@@ -97,7 +107,14 @@ export class MongoExecutor implements CommandExecutor {
         case 'AGGREGATE':
           // Handle aggregation commands
           const pipeline = command.pipeline.map((stage) => this.convertObjectIds(stage));
-          const aggregateCursor = database.collection(command.collection).aggregate(pipeline);
+
+          // Prepare aggregation options
+          const aggregateOptions: any = {};
+
+          // Create the cursor with options
+          const aggregateCursor = database
+            .collection(command.collection)
+            .aggregate(pipeline, aggregateOptions);
 
           // Always return array for the regular execute
           result = await aggregateCursor.toArray();
@@ -114,10 +131,14 @@ export class MongoExecutor implements CommandExecutor {
   /**
    * Execute a series of MongoDB commands and return cursors
    * @param commands Array of commands to execute
+   * @param options Options for cursor execution
    * @returns Cursor for FIND and AGGREGATE commands, null for other commands
    * @typeParam T - The type of documents that will be returned (defaults to Document)
    */
-  async executeCursor<T = Document>(commands: Command[]): Promise<CursorResult<T>> {
+  async executeCursor<T = Document>(
+    commands: Command[],
+    options?: CursorOptions
+  ): Promise<CursorResult<T>> {
     // We assume the client is already connected
     const database = this.client.db(this.dbName);
 
@@ -128,27 +149,36 @@ export class MongoExecutor implements CommandExecutor {
     for (const command of commands) {
       switch (command.type) {
         case 'FIND':
-          const findCursor = database
-            .collection(command.collection)
-            .find(this.convertObjectIds(command.filter || {}));
+          // Prepare find options
+          const findOptions: any = {};
 
           // Apply projection if specified
           if (command.projection) {
-            findCursor.project(command.projection);
+            findOptions.projection = command.projection;
           }
 
           // Apply sorting if specified
           if (command.sort) {
-            findCursor.sort(command.sort);
+            findOptions.sort = command.sort;
           }
 
           // Apply pagination if specified
           if (command.skip) {
-            findCursor.skip(command.skip);
+            findOptions.skip = command.skip;
           }
           if (command.limit && command.limit > 0) {
-            findCursor.limit(command.limit);
+            findOptions.limit = command.limit;
           }
+
+          // Apply batch size from options
+          if (options?.batchSize) {
+            findOptions.batchSize = options.batchSize;
+          }
+
+          // Create the cursor with all options at once
+          const findCursor = database
+            .collection(command.collection)
+            .find(this.convertObjectIds(command.filter || {}), findOptions);
 
           // Return the cursor directly
           result = findCursor;
@@ -157,7 +187,17 @@ export class MongoExecutor implements CommandExecutor {
         case 'AGGREGATE':
           // Handle aggregation commands
           const pipeline = command.pipeline.map((stage) => this.convertObjectIds(stage));
-          result = database.collection(command.collection).aggregate(pipeline);
+
+          // Prepare aggregation options
+          const aggregateOptions: any = {};
+
+          // Apply batch size from options
+          if (options?.batchSize) {
+            aggregateOptions.batchSize = options.batchSize;
+          }
+
+          // Create the cursor with options
+          result = database.collection(command.collection).aggregate(pipeline, aggregateOptions);
           break;
 
         case 'INSERT':

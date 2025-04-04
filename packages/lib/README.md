@@ -49,7 +49,8 @@ const results = await queryLeaf.execute('SELECT * FROM users WHERE age > 21');
 console.log(results);
 
 // Get a MongoDB cursor for more control over result processing and memory efficiency
-const cursor = await queryLeaf.executeCursor('SELECT * FROM users WHERE age > 30');
+// You can optionally specify a batch size to control how many documents are fetched at once
+const cursor = await queryLeaf.executeCursor('SELECT * FROM users WHERE age > 30', { batchSize: 50 });
 await cursor.forEach((doc) => {
   console.log(`User: ${doc.name}`);
 });
@@ -106,7 +107,8 @@ When working with large result sets, using MongoDB cursors directly can be more 
 
 ```typescript
 // Get a cursor for a SELECT query
-const cursor = await queryLeaf.executeCursor('SELECT * FROM products WHERE price > 100');
+// You can specify a batch size to control memory usage and network behavior
+const cursor = await queryLeaf.executeCursor('SELECT * FROM products WHERE price > 100', { batchSize: 100 });
 
 // Option 1: Convert to array (loads all results into memory)
 const results = await cursor.toArray();
@@ -131,7 +133,7 @@ await cursor.close();
 Features:
 - Returns MongoDB `FindCursor` for normal queries and `AggregationCursor` for aggregations
 - Supports all cursor methods like `forEach()`, `toArray()`, `next()`, `hasNext()`
-- Efficiently handles large result sets with MongoDB's batching system
+- Efficiently handles large result sets with MongoDB's batching system (configurable batch size)
 - Works with all advanced QueryLeaf features (filtering, sorting, aggregations, etc.)
 - Only available for read operations (SELECT queries)
 ```

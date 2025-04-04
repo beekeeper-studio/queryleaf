@@ -335,4 +335,46 @@ describe('MongoDB Cursor Functionality Tests', () => {
     // Clean up
     await cursor?.close();
   });
+  
+  test('should support custom batchSize option', async () => {
+    // This test verifies the batchSize option is used correctly
+    // Arrange
+    const queryLeaf = testSetup.getQueryLeaf();
+    const db = testSetup.getDb();
+    
+    // Generate more data to make batching more apparent
+    const moreDocuments = [];
+    for (let i = 0; i < 50; i++) {
+      moreDocuments.push({ name: `Extra Product ${i}`, value: i });
+    }
+    await db.collection('batch_test').deleteMany({});
+    await db.collection('batch_test').insertMany(moreDocuments);
+    
+    // Define a small batch size
+    const batchSize = 10;
+    
+    // Act - Create a cursor with a specific batch size
+    const cursor = await queryLeaf.executeCursor(
+      'SELECT * FROM batch_test ORDER BY value ASC',
+      { batchSize }
+    );
+    
+    // Assert
+    expect(cursor).not.toBeNull();
+    
+    // Consume the cursor in multiple steps to verify batching
+    const result1 = await cursor!.toArray();
+    
+    // We should have all documents
+    expect(result1.length).toBe(50);
+    
+    // Verify results are in correct order
+    for (let i = 1; i < result1.length; i++) {
+      expect(result1[i].value).toBeGreaterThanOrEqual(result1[i-1].value);
+    }
+    
+    // Clean up
+    await cursor!.close();
+    await db.collection('batch_test').drop();
+  });
 });

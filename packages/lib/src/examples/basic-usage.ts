@@ -106,7 +106,10 @@ async function main() {
     let cursor: CursorResult<Document> = null;
     try {
       // Using the executeCursor method to get a MongoDB cursor
-      cursor = await queryLeaf.executeCursor('SELECT * FROM users WHERE active = true');
+      // You can optionally specify a batch size to control memory usage
+      cursor = await queryLeaf.executeCursor('SELECT * FROM users WHERE active = true', {
+        batchSize: 20,
+      });
 
       // Check if we got a cursor back
       if (cursor) {

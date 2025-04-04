@@ -123,6 +123,17 @@ export type CursorResult<T = Document> =
   | null; // No result
 
 /**
+ * Options for cursor execution
+ */
+export interface CursorOptions {
+  /**
+   * Number of documents to fetch per batch
+   * This will be set directly on the query command, not on the cursor after creation
+   */
+  batchSize?: number;
+}
+
+/**
  * MongoDB command executor interface
  */
 export interface CommandExecutor {
@@ -138,9 +149,13 @@ export interface CommandExecutor {
   /**
    * Execute MongoDB commands and return cursors for FIND and AGGREGATE commands
    * @param commands Array of commands to execute
+   * @param options Options for cursor execution
    * @returns Cursor for FIND and AGGREGATE commands, null for other commands
    */
-  executeCursor<T = Document>(commands: Command[]): Promise<CursorResult<T>>;
+  executeCursor<T = Document>(
+    commands: Command[],
+    options?: CursorOptions
+  ): Promise<CursorResult<T>>;
 }
 
 /**
@@ -157,9 +172,10 @@ export interface QueryLeaf {
   /**
    * Execute a SQL query and return a cursor for SELECT queries
    * @param sql SQL query string
+   * @param options Options for cursor execution
    * @returns Cursor for SELECT queries, null for other queries
    */
-  executeCursor<T = Document>(sql: string): Promise<CursorResult<T>>;
+  executeCursor<T = Document>(sql: string, options?: CursorOptions): Promise<CursorResult<T>>;
 
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
@@ -169,7 +185,7 @@ export interface QueryLeaf {
 
 export interface Squongo extends QueryLeaf {
   execute<T = Document>(sql: string): Promise<ExecutionResult<T>>;
-  executeCursor<T = Document>(sql: string): Promise<CursorResult<T>>;
+  executeCursor<T = Document>(sql: string, options?: CursorOptions): Promise<CursorResult<T>>;
   parse(sql: string): SqlStatement;
   compile(statement: SqlStatement): Command[];
   getExecutor(): CommandExecutor;

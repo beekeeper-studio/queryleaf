@@ -77,11 +77,12 @@ const usersInNY = await queryLeaf.execute(`
 
 ```typescript
 // Use cursor for memory-efficient processing of large result sets
+// Optionally specify a batch size to control how many documents are fetched at once
 const cursor = await queryLeaf.executeCursor(`
   SELECT _id, customer, total, items
   FROM orders
   WHERE status = 'completed'
-`);
+`, { batchSize: 100 }); // Set batch size to 100 documents per batch
 
 try {
   // Process one document at a time without loading everything in memory

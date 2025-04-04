@@ -55,7 +55,8 @@ const queryLeaf = new QueryLeaf(mongoClient, 'mydatabase');
 const results = await queryLeaf.execute('SELECT * FROM users');
 
 // Or use a cursor for more control and memory efficiency
-const cursor = await queryLeaf.executeCursor('SELECT * FROM users');
+// You can optionally specify the batch size to control memory usage
+const cursor = await queryLeaf.executeCursor('SELECT * FROM users', { batchSize: 50 });
 await cursor.forEach(user => {
   console.log(`Processing user: ${user.name}`);
 });

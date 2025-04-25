@@ -331,7 +331,12 @@ export class SqlParserImpl implements SqlParser {
 
     // Check if the name appears as a table name or alias in the FROM clause
     return ast.from.some((fromItem: any) => {
-      return fromItem.table === name || fromItem.as === name;
+      return (
+        fromItem.table === name || 
+        fromItem.as === name || 
+        // Also match table references to aliases in the FROM clause
+        (typeof fromItem === 'object' && fromItem.as && fromItem.as === name)
+      );
     });
   }
 

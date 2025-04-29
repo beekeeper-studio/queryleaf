@@ -8,7 +8,7 @@ import {
   DeleteCommand,
   AggregateCommand,
 } from './interfaces';
-import { From } from 'node-sql-parser';
+import { From, Dual } from 'node-sql-parser';
 import debug from 'debug';
 
 const log = debug('queryleaf:compiler');
@@ -28,6 +28,13 @@ export class SqlCompilerImpl implements SqlCompiler {
   // Store table aliases from FROM clause
   private currentTableAliases: Map<string, string> = new Map();
 
+  /**
+   * Type guard to check if an object is a From type and not a Dual type
+   */
+  private isFromType(obj: From | Dual): obj is From {
+    return (obj as From).table !== undefined;
+  }
+
   compile(statement: SqlStatement): Command[] {
     const ast = statement.ast;
 
@@ -44,7 +51,8 @@ export class SqlCompilerImpl implements SqlCompiler {
     if (ast.type === 'select' && ast.from) {
       // Extract aliases from SELECT FROM clause
       for (const fromItem of ast.from) {
-        if (fromItem.as) {
+        // Type guard to check if this is a From type and not a Dual type
+        if (this.isFromType(fromItem) && fromItem.as) {
           this.currentTableAliases.set(fromItem.as, fromItem.table);
           log(`Found table alias in SELECT: ${fromItem.as} -> ${fromItem.table}`);
         }
@@ -52,7 +60,8 @@ export class SqlCompilerImpl implements SqlCompiler {
     } else if (ast.type === 'update' && ast.table) {
       // Extract aliases from UPDATE table clause
       for (const tableItem of ast.table) {
-        if (tableItem.as) {
+        // Type guard to check if this is a From type and not a Dual type
+        if (this.isFromType(tableItem) && tableItem.as) {
           this.currentTableAliases.set(tableItem.as, tableItem.table);
           log(`Found table alias in UPDATE: ${tableItem.as} -> ${tableItem.table}`);
         }
@@ -60,7 +69,8 @@ export class SqlCompilerImpl implements SqlCompiler {
     } else if (ast.type === 'delete' && ast.from) {
       // Extract aliases from DELETE FROM clause
       for (const fromItem of ast.from) {
-        if (fromItem.as) {
+        // Type guard to check if this is a From type and not a Dual type
+        if (this.isFromType(fromItem) && fromItem.as) {
           this.currentTableAliases.set(fromItem.as, fromItem.table);
           log(`Found table alias in DELETE: ${fromItem.as} -> ${fromItem.table}`);
         }
@@ -349,7 +359,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           const hasStar =
             ast.columns &&
             ast.columns.some(
-              (col) =>
+              (col: any) =>
                 col === '*' || (typeof col === 'object' && col.expr && col.expr.type === 'star')
             );
 
@@ -641,7 +651,7 @@ export class SqlCompilerImpl implements SqlCompiler {
             const addFieldsStage: Record<string, any> = {};
 
             // Detailed output of each column being processed
-            ast.columns.forEach((column, idx) => {
+            ast.columns.forEach((column: any, idx: number) => {
               log(`Column ${idx} details:`, JSON.stringify(column, null, 2));
             });
 
@@ -1039,10 +1049,10 @@ export class SqlCompilerImpl implements SqlCompiler {
   /**
    * Extract table name from FROM clause
    */
-  private extractTableName(from: From): string {
+  private extractTableName(from: From | Dual): string {
     if (typeof from === 'string') {
       return from;
-    } else if (from.table) {
+    } else if (this.isFromType(from) && from.table) {
       return from.table;
     }
     throw new Error('Invalid FROM clause');

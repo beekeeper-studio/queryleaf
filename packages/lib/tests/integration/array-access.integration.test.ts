@@ -9,19 +9,34 @@ describe('Array Access Integration Tests', () => {
   }, 30000); // 30 second timeout for container startup
   
   afterAll(async () => {
+    // Make sure to close any outstanding connections
+    const queryLeaf = testSetup.getQueryLeaf();
+    
+    // Clean up any resources that QueryLeaf might be using
+    if (typeof queryLeaf.close === 'function') {
+      await queryLeaf.close();
+    }
+    
+    // Clean up test setup resources
     await testSetup.cleanup();
-  });
+  }, 10000);
   
   beforeEach(async () => {
-    // Add test data for array access
+    // Clean up collections before each test
     const db = testSetup.getDb();
     await db.collection('order_items').deleteMany({});
+    await db.collection('movies').deleteMany({});
+    await db.collection('users').deleteMany({});
+    await db.collection('directors').deleteMany({});
   });
   
   afterEach(async () => {
-    // Clean up test data
+    // Clean up collections after each test
     const db = testSetup.getDb();
     await db.collection('order_items').deleteMany({});
+    await db.collection('movies').deleteMany({});
+    await db.collection('users').deleteMany({});
+    await db.collection('directors').deleteMany({});
   });
 
   test('should handle array access syntax for nested field access in queries', async () => {
@@ -197,5 +212,302 @@ describe('Array Access Integration Tests', () => {
     const orderIds = indexResults.map((r: any) => r.orderId);
     expect(orderIds).toContain('ORD-2001');
     expect(orderIds).toContain('ORD-2002');
+  });
+  
+  // NEW TESTS FOR DIRECT BRACKET NOTATION
+  
+  test('should support bracket notation for array access in SELECT', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('movies').insertMany([
+      { 
+        title: 'The Matrix', 
+        year: 1999,
+        actors: [
+          { name: 'Keanu Reeves', role: 'Neo' },
+          { name: 'Laurence Fishburne', role: 'Morpheus' },
+          { name: 'Carrie-Anne Moss', role: 'Trinity' }
+        ]
+      },
+      { 
+        title: 'Inception', 
+        year: 2010,
+        actors: [
+          { name: 'Leonardo DiCaprio', role: 'Cobb' },
+          { name: 'Joseph Gordon-Levitt', role: 'Arthur' },
+          { name: 'Ellen Page', role: 'Ariadne' }
+        ]
+      }
+    ]);
+    
+    // Act - Test bracket notation syntax
+    const queryLeaf = testSetup.getQueryLeaf();
+    // Explicit test of the bracket notation feature we want to implement
+    const sql = "SELECT title, actors[0].name AS lead_actor FROM movies";
+    log('SQL being executed:', sql);
+    
+    // Debug: First check with direct MongoDB query to ensure test data is properly inserted
+    const directMovies = await db.collection('movies').find().toArray();
+    log('Direct MongoDB query results for movies:', JSON.stringify(directMovies, null, 2));
+    
+    const results = ensureArray(await queryLeaf.execute(sql));
+    log('Bracket notation array access results:', JSON.stringify(results, null, 2));
+    
+    // Extra debug info to help diagnose the issue
+    log('===== TEST DEBUG INFO =====');
+    log('SQL Query:', sql);
+    log('Direct MongoDB data:', JSON.stringify(directMovies, null, 2));
+    log('QueryLeaf result keys:', Object.keys(results[0] || {}));
+    log('The Matrix result:', JSON.stringify(results.find(m => m.title === 'The Matrix'), null, 2));
+    
+    // Assert
+    expect(results).toHaveLength(2);
+    expect(results.find(m => m.title === 'The Matrix')?.lead_actor).toBe('Keanu Reeves');
+    expect(results.find(m => m.title === 'Inception')?.lead_actor).toBe('Leonardo DiCaprio');
+  });
+
+  test('should support bracket notation for array access in WHERE clause', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('movies').insertMany([
+      { 
+        title: 'The Matrix', 
+        year: 1999,
+        ratings: [8.5, 9.0, 7.5]
+      },
+      { 
+        title: 'Inception', 
+        year: 2010,
+        ratings: [9.2, 8.8, 9.5]
+      }
+    ]);
+    
+    // Act - Test bracket notation in WHERE clause
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = "SELECT title, year FROM movies WHERE ratings[0] > 9.0";
+    
+    const results = ensureArray(await queryLeaf.execute(sql));
+    log('Bracket notation in WHERE results:', JSON.stringify(results, null, 2));
+    
+    // Assert
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toBe('Inception');
+  });
+
+  test('should support multiple levels of array and object nesting with bracket notation', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('users').insertMany([
+      { 
+        name: 'Alice', 
+        addresses: [
+          { 
+            type: 'home',
+            details: {
+              street: '123 Main St',
+              coords: [40.7128, -74.0060]
+            }
+          },
+          { 
+            type: 'work',
+            details: {
+              street: '456 Market St',
+              coords: [37.7749, -122.4194]
+            }
+          }
+        ]
+      },
+      { 
+        name: 'Bob', 
+        addresses: [
+          { 
+            type: 'home',
+            details: {
+              street: '789 Oak St',
+              coords: [39.9526, -75.1652]
+            }
+          }
+        ]
+      }
+    ]);
+    
+    // Act - Test complex nesting with bracket notation
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = "SELECT name, addresses[0].details.street AS home_street, addresses[0].details.coords[0] AS latitude FROM users";
+    
+    // First, do a direct MongoDB query to see the exact structure
+    const directUserResults = await db.collection('users').find().toArray();
+    log('Direct MongoDB query result for users:', JSON.stringify(directUserResults, null, 2));
+    
+    const results = ensureArray(await queryLeaf.execute(sql));
+    log('Complex nested bracket notation results:', JSON.stringify(results, null, 2));
+    
+    // Assert
+    expect(results).toHaveLength(2);
+    const alice = results.find(u => u.name === 'Alice');
+    const bob = results.find(u => u.name === 'Bob');
+    
+    expect(alice).toBeDefined();
+    expect(alice?.home_street).toBe('123 Main St');
+    expect(alice?.latitude).toBe(40.7128);
+    
+    expect(bob).toBeDefined();
+    expect(bob?.home_street).toBe('789 Oak St');
+    expect(bob?.latitude).toBe(39.9526);
+  });
+
+  test('should support bracket notation in UPDATE statements', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    await db.collection('movies').insertOne({ 
+      title: 'The Matrix', 
+      year: 1999,
+      actors: [
+        { name: 'Keanu Reeves', role: 'Neo' },
+        { name: 'Laurence Fishburne', role: 'Morpheus' },
+        { name: 'Carrie-Anne Moss', role: 'Trinity' }
+      ]
+    });
+    
+    // Act - Test bracket notation in UPDATE statement
+    const queryLeaf = testSetup.getQueryLeaf();
+    const updateSql = "UPDATE movies SET actors[0].role = 'The One' WHERE title = 'The Matrix'";
+    
+    await queryLeaf.execute(updateSql);
+    
+    // Verify with a SELECT using bracket notation
+    const selectSql = "SELECT title, actors[0].name, actors[0].role FROM movies WHERE title = 'The Matrix'";
+    log('SQL for verification after UPDATE:', selectSql);
+    const results = ensureArray(await queryLeaf.execute(selectSql));
+    log('Bracket notation in UPDATE results:', JSON.stringify(results, null, 2));
+    log('Result keys:', Object.keys(results[0] || {}));
+    
+    // Assert
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('Keanu Reeves');
+    expect(results[0].role).toBe('The One');
+    
+    // Double-check with a direct MongoDB query
+    const dbResult = await db.collection('movies').findOne({ title: 'The Matrix' });
+    log('Direct MongoDB query after UPDATE:', JSON.stringify(dbResult, null, 2));
+    expect(dbResult?.actors[0]?.role).toBe('The One');
+  });
+
+  test('should support bracket notation with JOIN operations', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    
+    // Insert movies with a director ID
+    await db.collection('movies').insertMany([
+      { 
+        title: 'The Matrix', 
+        year: 1999,
+        directorId: 'director1',
+        scenes: [
+          { name: 'Rooftop Scene', duration: 12 },
+          { name: 'Lobby Scene', duration: 8 }
+        ]
+      },
+      { 
+        title: 'Inception', 
+        year: 2010,
+        directorId: 'director2',
+        scenes: [
+          { name: 'Dream Level 1', duration: 15 },
+          { name: 'Dream Level 2', duration: 10 }
+        ]
+      }
+    ]);
+    
+    // Insert directors
+    await db.collection('directors').insertMany([
+      { 
+        _id: 'director1', 
+        name: 'Wachowski Sisters',
+        awards: ['Oscar Nomination', 'BAFTA Award']
+      },
+      { 
+        _id: 'director2', 
+        name: 'Christopher Nolan',
+        awards: ['Oscar Winner', 'Golden Globe']
+      }
+    ]);
+    
+    // Act - Test bracket notation in JOIN query
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `
+      SELECT m.title, m.scenes[0].name AS first_scene, d.name AS director, d.awards[0] AS top_award 
+      FROM movies m
+      JOIN directors d ON m.directorId = d._id
+    `;
+    log('JOIN SQL query:', sql);
+    
+    // Verify input data with direct MongoDB queries
+    const moviesData = await db.collection('movies').find().toArray();
+    log('Direct MongoDB query - movies:', JSON.stringify(moviesData, null, 2));
+    
+    const directorsData = await db.collection('directors').find().toArray();
+    log('Direct MongoDB query - directors:', JSON.stringify(directorsData, null, 2));
+    
+    // Let's first check what this specific MongoDB query would look like
+    // without the SQL translation
+    const movieCollection = db.collection('movies');
+    const pipeline = [
+      {
+        $lookup: {
+          from: 'directors',
+          localField: 'directorId',
+          foreignField: '_id',
+          as: 'director'
+        }
+      },
+      {
+        $unwind: '$director'
+      },
+      {
+        $project: {
+          'title': 1,
+          'first_scene': { $arrayElemAt: ['$scenes.name', 0] },
+          'director': '$director.name',
+          'top_award': { $arrayElemAt: ['$director.awards', 0] }
+        }
+      }
+    ];
+    
+    // Run the manual MongoDB aggregation for comparison
+    const manualResult = await movieCollection.aggregate(pipeline).toArray();
+    log('Manual MongoDB aggregation result:', JSON.stringify(manualResult, null, 2));
+    
+    const results = ensureArray(await queryLeaf.execute(sql));
+    log('Bracket notation in JOIN results:', JSON.stringify(results, null, 2));
+    log('JOIN result keys:', Object.keys(results[0] || {}));
+    
+    // For debugging - add more detailed output
+    log('Results detailed dump:');
+    results.forEach((r, i) => {
+      log(`- Result ${i}:`, JSON.stringify(r, null, 2));
+      log(`  Keys: ${Object.keys(r).join(', ')}`);
+    });
+    
+    // Try different ways to find The Matrix
+    const matrixByTitle = results.find(r => r.title === 'The Matrix');
+    const matrixById = results.find(r => r._id === 'director1');
+    log('Matrix lookup by title:', matrixByTitle ? 'found' : 'not found');
+    log('Matrix lookup by director id:', matrixById ? 'found' : 'not found');
+    
+    // Assert
+    expect(results).toHaveLength(2);
+    
+    const matrix = results.find(r => r.title === 'The Matrix');
+    expect(matrix).toBeDefined();
+    expect(matrix?.first_scene).toBe('Rooftop Scene');
+    expect(matrix?.director).toBe('Wachowski Sisters');
+    expect(matrix?.top_award).toBe('Oscar Nomination');
+    
+    const inception = results.find(r => r.title === 'Inception');
+    expect(inception).toBeDefined();
+    expect(inception?.first_scene).toBe('Dream Level 1');
+    expect(inception?.director).toBe('Christopher Nolan');
+    expect(inception?.top_award).toBe('Oscar Winner');
   });
 });

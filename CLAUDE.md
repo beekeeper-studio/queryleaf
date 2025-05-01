@@ -9,7 +9,7 @@ QueryLeaf is a SQL to MongoDB compiler / translator.
 - Format: `yarn format` (check: `yarn format:check`)
 - Run all tests: `yarn test`
 - Run individual package tests: `yarn test:lib`, `yarn test:cli`, `yarn test:server`, `yarn test:pg-server`
-- Run single test: `cd packages/[package] && npx jest -t "test name"` or `npx jest path/to/test.test.ts -t "test name"`
+- Run single test: `cd packages/[package] && yarn yarn -t "test name"` or `yarn jest path/to/test.test.ts -t "test name"`
 - Integration tests: `yarn test:lib:integration` (requires Docker)
 - Documentation: `yarn docs:serve` (dev), `yarn docs:build` (build)
 

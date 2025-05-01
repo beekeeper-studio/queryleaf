@@ -22,6 +22,7 @@
     "test:unit": "bin/run-all test:unit",
     "test:integration": "bin/run-all test:integration",
     "test:lib": "yarn workspace @queryleaf/lib test",
+    "test:lib:integration": "yarn workspace @queryleaf/lib test:integration",
     "test:cli": "yarn workspace @queryleaf/cli test",
     "test:server": "yarn workspace @queryleaf/server test",
     "test:pg-server": "yarn workspace @queryleaf/postgres-server test",

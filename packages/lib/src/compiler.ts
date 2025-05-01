@@ -8,7 +8,7 @@ import {
   DeleteCommand,
   AggregateCommand,
 } from './interfaces';
-import { From } from 'node-sql-parser';
+import { From, Dual } from 'node-sql-parser';
 import debug from 'debug';
 
 const log = debug('queryleaf:compiler');
@@ -25,6 +25,16 @@ export class SqlCompilerImpl implements SqlCompiler {
   // Store the current SQL statement metadata for use in helper methods
   private currentStatementMetadata: any;
 
+  // Store table aliases from FROM clause
+  private currentTableAliases: Map<string, string> = new Map();
+
+  /**
+   * Type guard to check if an object is a From type and not a Dual type
+   */
+  private isFromType(obj: From | Dual): obj is From {
+    return (obj as From).table !== undefined;
+  }
+
   compile(statement: SqlStatement): Command[] {
     const ast = statement.ast;
 
@@ -33,6 +43,39 @@ export class SqlCompilerImpl implements SqlCompiler {
     log('Statement metadata:', JSON.stringify(this.currentStatementMetadata, null, 2));
 
     log('Compiling SQL AST:', JSON.stringify(ast, null, 2));
+
+    // Reset table aliases for this new statement
+    this.currentTableAliases = new Map();
+
+    // Extract table aliases for all statement types that have FROM clause or table references
+    if (ast.type === 'select' && ast.from) {
+      // Extract aliases from SELECT FROM clause
+      for (const fromItem of ast.from) {
+        // Type guard to check if this is a From type and not a Dual type
+        if (this.isFromType(fromItem) && fromItem.as) {
+          this.currentTableAliases.set(fromItem.as, fromItem.table);
+          log(`Found table alias in SELECT: ${fromItem.as} -> ${fromItem.table}`);
+        }
+      }
+    } else if (ast.type === 'update' && ast.table) {
+      // Extract aliases from UPDATE table clause
+      for (const tableItem of ast.table) {
+        // Type guard to check if this is a From type and not a Dual type
+        if (this.isFromType(tableItem) && tableItem.as) {
+          this.currentTableAliases.set(tableItem.as, tableItem.table);
+          log(`Found table alias in UPDATE: ${tableItem.as} -> ${tableItem.table}`);
+        }
+      }
+    } else if (ast.type === 'delete' && ast.from) {
+      // Extract aliases from DELETE FROM clause
+      for (const fromItem of ast.from) {
+        // Type guard to check if this is a From type and not a Dual type
+        if (this.isFromType(fromItem) && fromItem.as) {
+          this.currentTableAliases.set(fromItem.as, fromItem.table);
+          log(`Found table alias in DELETE: ${fromItem.as} -> ${fromItem.table}`);
+        }
+      }
+    }
 
     // Pre-process the AST to handle nested fields that might be parsed as table references
     this.handleNestedFieldReferences(ast);
@@ -117,11 +160,21 @@ export class SqlCompilerImpl implements SqlCompiler {
       if (column.expr.schema && column.expr.column && column.expr.column.includes('.')) {
         fieldPath = `${column.expr.schema}.${column.expr.column}`;
         log(`Found multi-level nested field with schema: ${fieldPath}`);
+      }
+      // Handle table.column aliases in expr.column form
+      else if (column.expr.table && column.expr.column) {
+        fieldPath = `${column.expr.table}.${column.expr.column}`;
+        log(`Found table.column alias in expr: ${fieldPath}`);
       } else if ('column' in column.expr && column.expr.column) {
         fieldPath = this.processFieldName(column.expr.column);
       } else if (column.expr.type === 'column_ref' && column.expr.column) {
+        // Check for table alias
+        if (column.expr.table && column.expr.column) {
+          fieldPath = `${column.expr.table}.${column.expr.column}`;
+          log(`Found table.column alias in column_ref: ${fieldPath}`);
+        }
         // Also check for schema in column_ref
-        if (column.expr.schema && column.expr.column.includes('.')) {
+        else if (column.expr.schema && column.expr.column.includes('.')) {
           fieldPath = `${column.expr.schema}.${column.expr.column}`;
           log(`Found multi-level nested field in column_ref: ${fieldPath}`);
         } else {
@@ -143,18 +196,41 @@ export class SqlCompilerImpl implements SqlCompiler {
         ) {
           fieldPath = `${column.expr.left.column}.${column.expr.right.column}`;
         }
+        // Handle table.column aliases in binary expression
+        else if (
+          column.expr.left &&
+          column.expr.left.type === 'column_ref' &&
+          column.expr.left.table &&
+          column.expr.left.column &&
+          column.expr.right &&
+          column.expr.right.type === 'column_ref' &&
+          column.expr.right.column
+        ) {
+          fieldPath = `${column.expr.left.table}.${column.expr.left.column}.${column.expr.right.column}`;
+          log(`Found complex table.column.subfield in binary expr: ${fieldPath}`);
+        }
       }
     } else if ('type' in column && column.type === 'column_ref' && column.column) {
+      // Check for table alias in direct column_ref
+      if (column.table && column.column) {
+        fieldPath = `${column.table}.${column.column}`;
+        log(`Found table.column alias in direct column_ref: ${fieldPath}`);
+      }
       // Check for schema in direct column_ref
-      if (column.schema && column.column.includes('.')) {
+      else if (column.schema && column.column.includes('.')) {
         fieldPath = `${column.schema}.${column.column}`;
         log(`Found multi-level nested field in column type: ${fieldPath}`);
       } else {
         fieldPath = this.processFieldName(column.column);
       }
     } else if ('column' in column) {
+      // Check for table alias in simple column
+      if (column.table && column.column) {
+        fieldPath = `${column.table}.${column.column}`;
+        log(`Found table.column alias in direct column: ${fieldPath}`);
+      }
       // Check for schema in simple column
-      if (column.schema && column.column.includes('.')) {
+      else if (column.schema && column.column.includes('.')) {
         fieldPath = `${column.schema}.${column.column}`;
         log(`Found multi-level nested field in direct column: ${fieldPath}`);
       } else {
@@ -173,13 +249,32 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     log(`Processing field path for projection: ${fieldPath}`);
 
+    // If the field path contains a period, check if it's a table alias reference or a nested field
     if (fieldPath.includes('.')) {
-      // For nested fields, create a name with underscores instead of dots
-      const fieldNameWithUnderscores = fieldPath.replace(/\./g, '_');
+      const parts = fieldPath.split('.');
+      const prefix = parts[0];
 
-      // Add to projection with the path-based name
-      projection[fieldNameWithUnderscores] = `$${fieldPath}`;
-      log(`Added nested field to projection: ${fieldNameWithUnderscores} = $${fieldPath}`);
+      // Check if the prefix is a table alias that we identified in the FROM clause
+      if (this.currentTableAliases.has(prefix)) {
+        // This is a table alias reference, extract just the field name
+        const actualField = parts.slice(1).join('.');
+        log(`Identified table alias in projection: ${prefix} -> ${actualField}`);
+
+        // Add to projection with just the field name - no $first for regular fields
+        projection[actualField] = 1;
+      } else {
+        // This is a nested field
+        // For nested fields, create a name with underscores instead of dots
+        const fieldNameWithUnderscores = fieldPath.replace(/\./g, '_');
+
+        // Add to projection with the path-based name - use $ syntax for field reference
+        projection[fieldNameWithUnderscores] = `$${fieldPath}`;
+        log(`Added nested field to projection: ${fieldNameWithUnderscores} = $${fieldPath}`);
+
+        // Also include the last part as a fallback
+        const lastPart = parts[parts.length - 1];
+        projection[lastPart] = 1;
+      }
     } else {
       // Regular field
       projection[fieldPath] = 1;
@@ -249,12 +344,88 @@ export class SqlCompilerImpl implements SqlCompiler {
             },
           });
 
+          // Add unwind stage for the joined collection
           aggregateCommand.pipeline.push({
             $unwind: {
               path: '$' + lookup.as,
               preserveNullAndEmptyArrays: true,
             },
           });
+
+          // Store fields to promote from joined table
+          const joinFieldMapping: Record<string, any> = {};
+
+          // We need a flag to check if we have a SELECT * query
+          const hasStar =
+            ast.columns &&
+            ast.columns.some(
+              (col: any) =>
+                col === '*' || (typeof col === 'object' && col.expr && col.expr.type === 'star')
+            );
+
+          // Process explicit columns first
+          if (ast.columns && !hasStar) {
+            for (const column of ast.columns) {
+              if (
+                typeof column === 'object' &&
+                column.expr &&
+                column.expr.table &&
+                column.expr.column
+              ) {
+                const table = column.expr.table;
+                const field = column.expr.column;
+
+                // Get the output field name (use alias if provided)
+                const outputName = column.as || field;
+
+                // If this field is from the joined table that we're currently processing
+                if (table === lookup.as) {
+                  // Map the joined field to the top level with proper name
+                  joinFieldMapping[outputName] = `$${lookup.as}.${field}`;
+                  log(`Explicit field mapping: ${outputName} = $${lookup.as}.${field}`);
+                }
+              }
+            }
+          }
+
+          // If we have a SELECT * or no explicit joined fields were found,
+          // we need to promote ALL fields from the joined collection
+          if (hasStar || Object.keys(joinFieldMapping).length === 0) {
+            // For SELECT *, we add a dedicated stage to promote ALL fields from the joined table
+            // Use $addFields with $map to dynamically extract all fields
+            aggregateCommand.pipeline.push({
+              $replaceRoot: {
+                newRoot: {
+                  $mergeObjects: ['$$ROOT', `$${lookup.as}`],
+                },
+              },
+            });
+            log(`Added $replaceRoot with $mergeObjects to flatten ALL fields from ${lookup.as}`);
+
+            // After merging, remove the original nested object
+            aggregateCommand.pipeline.push({
+              $project: {
+                [lookup.as]: 0,
+              },
+            });
+            log(`Added $project to remove original nested object ${lookup.as}`);
+          } else {
+            // For explicit field selection, add fields stage to bring joined fields up to top level
+            aggregateCommand.pipeline.push({
+              $addFields: joinFieldMapping,
+            });
+            log(
+              `Added $addFields stage for explicit joined fields: ${JSON.stringify(joinFieldMapping, null, 2)}`
+            );
+
+            // Then exclude the nested joined document to prevent duplication
+            aggregateCommand.pipeline.push({
+              $project: {
+                [lookup.as]: 0,
+              },
+            });
+            log(`Added $project stage to exclude nested joined document: ${lookup.as}`);
+          }
         });
       }
 
@@ -284,6 +455,9 @@ export class SqlCompilerImpl implements SqlCompiler {
       if (ast.columns) {
         const projection: Record<string, any> = {};
 
+        // For JOIN queries, we need to handle nested paths differently
+        const isJoinQuery = ast.from && ast.from.length > 1;
+
         // Handle each column in the projection
         for (const column of ast.columns) {
           if (
@@ -294,13 +468,342 @@ export class SqlCompilerImpl implements SqlCompiler {
             continue;
           }
 
+          // Handle aggregate functions specially in projection
+          if (
+            typeof column === 'object' &&
+            column.expr &&
+            (column.expr.type === 'aggr_func' || column.expr.type === 'function')
+          ) {
+            if (column.as) {
+              // If this is an aggregate function with an alias, preserve it in projection
+              log(`Found aggregate function with alias: ${column.as}`);
+
+              // For aggregates, just pass the value through directly from the group stage
+              projection[column.as] = 1;
+            }
+            continue;
+          }
+
           const fieldPath = this.extractFieldPath(column);
-          this.addFieldToProjection(projection, fieldPath);
+
+          // Check if this column has an alias
+          if (typeof column === 'object' && column.as) {
+            // If column has an alias, use it for projection
+            log(`Found column alias: ${column.as} for field: ${fieldPath}`);
+
+            if (fieldPath.includes('.')) {
+              // If it's a table alias reference, extract actual field
+              const parts = fieldPath.split('.');
+              const prefix = parts[0];
+
+              if (this.currentTableAliases.has(prefix)) {
+                // This is a field referenced via table alias (e.g., c.name)
+                const actualField = parts.slice(1).join('.');
+
+                if (isJoinQuery) {
+                  // In JOIN queries, references to aliased tables need to be mapped to the lookup path
+                  // Example: c.name should become $c.name where c is the alias for the "customers" collection
+                  projection[column.as] = `$${prefix}.${actualField}`;
+                  log(`JOIN query - added aliased field: ${column.as} = $${prefix}.${actualField}`);
+                } else {
+                  // In non-JOIN queries, we can directly access the field
+                  projection[column.as] = `$${actualField}`;
+                  // Also include the actual field in the projection to ensure it's available
+                  projection[actualField] = 1;
+                  log(
+                    `Added aliased field to projection: ${column.as} = $${actualField}, including ${actualField}`
+                  );
+                }
+              } else {
+                // Nested field with alias
+                projection[column.as] = `$${fieldPath}`;
+                log(`Added aliased nested field to projection: ${column.as} = $${fieldPath}`);
+              }
+            } else {
+              // Regular field with alias
+              projection[column.as] = `$${fieldPath}`;
+              log(`Added aliased field to projection: ${column.as} = $${fieldPath}`);
+            }
+          } else {
+            // No alias, use standard projection
+            this.addFieldToProjection(projection, fieldPath);
+          }
         }
 
-        // Add the projection stage if we have fields to project
-        if (Object.keys(projection).length > 0) {
-          log('Projection stage:', JSON.stringify(projection, null, 2));
+        // For JOIN queries, we need a special handling
+        if (isJoinQuery) {
+          // Add detailed debugging for JOIN queries
+          log('================ JOIN QUERY DEBUG ================');
+          log('JOIN query columns:', JSON.stringify(ast.columns, null, 2));
+          log('JOIN query from:', JSON.stringify(ast.from, null, 2));
+          log('JOIN query where:', JSON.stringify(ast.where, null, 2));
+
+          // Add the $lookup stages we've already configured
+          const lookupStages = aggregateCommand.pipeline.filter((stage) => '$lookup' in stage);
+          log('Current $lookup stages:', JSON.stringify(lookupStages, null, 2));
+
+          // For JOIN queries, we need to handle the projection differently to flatten the results
+          // First, we'll create a projection that preserves the table aliases in the pipeline
+          const renamedFieldsProject: Record<string, any> = {};
+
+          // Process each column and create a flattened naming structure
+          for (const column of ast.columns) {
+            if (typeof column === 'object' && column.expr) {
+              const table = column.expr.table;
+              const field = column.expr.column;
+
+              // The field name that will be used in the output
+              // If there's an alias, use it, otherwise use just the field name
+              const outputName = column.as || field;
+
+              if (table) {
+                // Different handling based on whether it's from the main table or a joined table
+                if (this.currentTableAliases.has(table)) {
+                  const isMainTable = table === ast.from[0].as;
+
+                  if (isMainTable) {
+                    // Fields from the main table can be accessed directly
+                    renamedFieldsProject[outputName] = `$${field}`;
+                    log(`Main table field mapping: ${outputName} = $${field}`);
+                  } else {
+                    // Fields from joined tables need the alias prefix
+                    renamedFieldsProject[outputName] = `$${table}.${field}`;
+                    log(`Joined table field mapping: ${outputName} = $${table}.${field}`);
+                  }
+                } else {
+                  // Not a recognized alias, but still has a table prefix
+                  renamedFieldsProject[outputName] = `$${table}.${field}`;
+                }
+              } else if (column.expr.type === 'column_ref' && column.expr.column) {
+                // Handle case where column is a direct column reference without table
+                // For JOINS, we still need to know which table it belongs to
+
+                // If no table specified, try to determine which table it belongs to
+                // For simplicity, assume it's from the main table
+                renamedFieldsProject[outputName] = `$${column.expr.column}`;
+                log(`Simple column mapping: ${outputName} = $${column.expr.column}`);
+              } else {
+                // No table prefix specified, assume it's from the main table
+                renamedFieldsProject[outputName] = `$${field}`;
+              }
+            } else if (
+              column === '*' ||
+              (typeof column === 'object' && column.expr && column.expr.type === 'star')
+            ) {
+              // For SELECT *, we need to merge all fields from all tables
+              // This is a more complex case that needs a special projection approach
+
+              // For star queries in JOIN context, we need to use MongoDB's $mergeObjects
+              // to bring fields from joined documents up to the top level
+
+              // First, create a base object with all fields from the main table
+              renamedFieldsProject['mainFields'] = '$$ROOT';
+
+              // Then, for each joined table, create a merge field
+              for (let i = 1; i < ast.from.length; i++) {
+                const joinedTable = ast.from[i].as || this.extractTableName(ast.from[i]);
+                // Use all fields from the joined table, directly available at the top level
+                // This preserves their original field names
+                renamedFieldsProject[joinedTable] = `$${joinedTable}`;
+              }
+
+              // Use MongoDB's $replaceRoot to promote all fields to the root level
+              // This will be a separate stage after the projection
+              const mergeObjects = ['$mainFields'];
+              for (let i = 1; i < ast.from.length; i++) {
+                const joinedTable = ast.from[i].as || this.extractTableName(ast.from[i]);
+                mergeObjects.push(`$${joinedTable}`);
+              }
+
+              // We will add the $replaceRoot stage after this projection
+              aggregateCommand.pipeline.push({
+                $replaceRoot: {
+                  newRoot: {
+                    $mergeObjects: mergeObjects,
+                  },
+                },
+              });
+
+              log('Added $replaceRoot stage for merging joined tables in SELECT *');
+            }
+          }
+
+          // Add a final stage to correctly handle JOIN results
+          // We need the column values to be accessible directly at the top level,
+          // without requiring table alias prefixes
+
+          if (ast.from.length > 1) {
+            log('====== DEBUG JOIN PROCESSING ======');
+            log(
+              'JOIN query structure:',
+              JSON.stringify(
+                {
+                  columns: ast.columns,
+                  from: ast.from,
+                  currentPipeline: aggregateCommand.pipeline,
+                },
+                null,
+                2
+              )
+            );
+
+            // For JOIN queries, we need to flatten the results
+            const addFieldsStage: Record<string, any> = {};
+
+            // Detailed output of each column being processed
+            ast.columns.forEach((column: any, idx: number) => {
+              log(`Column ${idx} details:`, JSON.stringify(column, null, 2));
+            });
+
+            // For each column in the query
+            for (const column of ast.columns) {
+              if (typeof column === 'object' && column.expr) {
+                const table = column.expr.table;
+                const field = column.expr.column;
+
+                log(`Processing JOIN column: table=${table}, field=${field}`);
+
+                if (table && field && this.currentTableAliases.has(table)) {
+                  // Output field name (possibly aliased)
+                  const outputField = column.as || field;
+
+                  // Create a path to the field, which could be in the root doc or nested
+                  // in a joined doc (like "o.product")
+                  // The key fix: Use proper MongoDB dot notation for accessing fields
+                  // Fields from main table can be accessed directly, fields from joined tables need the alias prefix
+                  let sourcePath;
+
+                  if (table === ast.from[0].as) {
+                    // Field from main table can be accessed directly
+                    sourcePath = `$${field}`;
+                    log(`Main table field path: $${field}`);
+                  } else {
+                    // Field from joined table (came from $lookup and $unwind)
+                    // MongoDB dot notation for accessing nested document fields
+                    sourcePath = `$${table}.${field}`;
+                    log(`Joined table field path: $${table}.${field}`);
+                  }
+
+                  // Add this field mapping
+                  addFieldsStage[outputField] = sourcePath;
+                  log(`JOIN: Creating flat field ${outputField} = ${sourcePath}`);
+                } else {
+                  log(
+                    `Skipped column - missing table alias or field: ${JSON.stringify(column, null, 2)}`
+                  );
+                }
+              } else {
+                log(`Non-object column structure:`, JSON.stringify(column, null, 2));
+              }
+            }
+
+            // Dump the current aliases for debugging
+            log('Current table aliases:', Object.fromEntries(this.currentTableAliases.entries()));
+
+            // Add the $addFields stage to make all fields available at the top level
+            if (Object.keys(addFieldsStage).length > 0) {
+              log('Adding $addFields stage for JOIN:', JSON.stringify(addFieldsStage, null, 2));
+
+              // Before adding, print the current pipeline
+              log(
+                'Pipeline before adding $addFields:',
+                JSON.stringify(aggregateCommand.pipeline, null, 2)
+              );
+
+              // Add the $addFields stage
+              aggregateCommand.pipeline.push({ $addFields: addFieldsStage });
+
+              // Direct fix for the product/price field coming from a JOIN
+              // We'll extract the exact fields we need from the joined document
+              const joinFieldMapping: Record<string, any> = {};
+
+              // Loop through columns to specifically handle JOIN fields
+              ast.columns.forEach((column: any) => {
+                if (
+                  typeof column === 'object' &&
+                  column.expr &&
+                  column.expr.table &&
+                  column.expr.column
+                ) {
+                  const table = column.expr.table;
+                  const field = column.expr.column;
+
+                  // Only process fields from joined tables (not from main table)
+                  if (this.currentTableAliases.has(table) && table !== ast.from[0].as) {
+                    // This is a field coming from a joined table
+                    const outputName = column.as || field;
+
+                    // Map it directly from the nested document to the top level
+                    joinFieldMapping[outputName] = `$${table}.${field}`;
+                    log(`Mapping joined field to top level: ${outputName} = $${table}.${field}`);
+                  }
+                }
+              });
+
+              // Add the $addFields stage to bring JOIN fields to top level
+              if (Object.keys(joinFieldMapping).length > 0) {
+                log(
+                  'Adding $addFields stage for JOIN field mapping:',
+                  JSON.stringify(joinFieldMapping, null, 2)
+                );
+                aggregateCommand.pipeline.push({
+                  $addFields: joinFieldMapping,
+                });
+              }
+
+              // Now we need to exclude the joined table objects since their fields are flattened
+              // This makes the output match what SQL would normally return
+              const excludeJoinedDocs: Record<string, any> = {};
+
+              // First, indicate that we want to keep everything
+              excludeJoinedDocs['_id'] = 1;
+
+              // Set merged fields to be kept
+              for (const [field, _] of Object.entries(joinFieldMapping)) {
+                excludeJoinedDocs[field] = 1;
+              }
+
+              // Include all base table fields (they're already at the root level)
+              for (const column of ast.columns) {
+                if (typeof column === 'object' && column.expr) {
+                  const table = column.expr.table;
+                  const field = column.expr.column;
+
+                  if (table === ast.from[0].as || !table) {
+                    // Main table field or direct field reference
+                    const outputName = column.as || field;
+                    excludeJoinedDocs[outputName] = 1;
+                  }
+                }
+              }
+
+              // Now specifically exclude the nested documents to prevent duplication
+              for (const fromItem of ast.from) {
+                if (fromItem.as && fromItem.as !== ast.from[0].as) {
+                  // Exclude the joined document fields that were flattened
+                  excludeJoinedDocs[fromItem.as] = 0;
+                }
+              }
+
+              log(
+                'Adding $project stage to exclude nested docs:',
+                JSON.stringify(excludeJoinedDocs, null, 2)
+              );
+              aggregateCommand.pipeline.push({ $project: excludeJoinedDocs });
+
+              // After adding, print the full pipeline
+              log(
+                'Final pipeline after JOIN processing:',
+                JSON.stringify(aggregateCommand.pipeline, null, 2)
+              );
+            } else {
+              log('No fields added to $addFields stage - skipping projection stages');
+            }
+          }
+        }
+        // For non-JOIN queries, use the standard projection
+        else if (Object.keys(projection).length > 0) {
+          log('Standard projection stage:', JSON.stringify(projection, null, 2));
           aggregateCommand.pipeline.push({ $project: projection });
         }
       }
@@ -456,7 +959,15 @@ export class SqlCompilerImpl implements SqlCompiler {
             log(`Reconstructed multi-level nested field: ${fieldName}`);
           } else {
             // This is a standard nested field with table.column structure
-            fieldName = `${setItem.table}.${setItem.column}`;
+            // Check if the table part is a registered alias
+            if (this.currentTableAliases.has(setItem.table)) {
+              // This is a table alias, use just the column name
+              fieldName = setItem.column;
+              log(`Found alias in UPDATE SET: ${setItem.table}.${setItem.column} -> ${fieldName}`);
+            } else {
+              // This is a nested field path
+              fieldName = `${setItem.table}.${setItem.column}`;
+            }
           }
         } else {
           // Process the field name to handle nested fields with dot notation
@@ -524,6 +1035,10 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     const collection = this.extractTableName(ast.from[0]);
 
+    // Pre-process the AST to handle nested fields that might be parsed as table references
+    // This ensures table aliases are properly handled in WHERE clauses
+    this.handleNestedFieldReferences(ast);
+
     return {
       type: 'DELETE',
       collection,
@@ -534,10 +1049,10 @@ export class SqlCompilerImpl implements SqlCompiler {
   /**
    * Extract table name from FROM clause
    */
-  private extractTableName(from: From): string {
+  private extractTableName(from: From | Dual): string {
     if (typeof from === 'string') {
       return from;
-    } else if (from.table) {
+    } else if (this.isFromType(from) && from.table) {
       return from.table;
     }
     throw new Error('Invalid FROM clause');
@@ -548,6 +1063,8 @@ export class SqlCompilerImpl implements SqlCompiler {
    */
   private convertWhere(where: any): Record<string, any> {
     if (!where) return {};
+
+    log('Converting WHERE clause:', JSON.stringify(where, null, 2));
 
     if (where.type === 'binary_expr') {
       const { left, right, operator } = where;
@@ -565,10 +1082,41 @@ export class SqlCompilerImpl implements SqlCompiler {
 
       // Handle comparison operators
       if (typeof left === 'object' && 'column' in left && left.column) {
-        const field = this.processFieldName(left.column);
-        const value = this.convertValue(right);
+        // Handle table alias in column reference
+        let field;
+        if (left.table && left.column) {
+          // Check if the table is a registered alias
+          if (this.currentTableAliases.has(left.table)) {
+            // This is a table alias, use just the field part
+            field = left.column;
+            log(`Using field from table alias in WHERE: ${left.table}.${left.column} -> ${field}`);
+          } else {
+            // This is a nested field reference
+            field = `${left.table}.${left.column}`;
+            log(`Using nested field in WHERE clause: ${field}`);
+          }
+        } else if (left.column.includes('.')) {
+          // Check if it's a field with dot notation that might have an alias prefix
+          const parts = left.column.split('.');
+          const prefix = parts[0];
 
+          // Check if the prefix is a table alias we identified in the FROM clause
+          if (this.currentTableAliases.has(prefix)) {
+            // This is a table alias reference, extract just the field name
+            field = parts.slice(1).join('.');
+            log(`Identified alias in dot notation: ${left.column} -> ${field}`);
+          } else {
+            // This is a nested field
+            field = this.processFieldName(left.column);
+          }
+        } else {
+          field = this.processFieldName(left.column);
+        }
+
+        const value = this.convertValue(right);
         const filter: Record<string, any> = {};
+
+        log(`Building filter for ${field} ${operator} ${JSON.stringify(value)}`);
 
         switch (operator) {
           case '=':
@@ -617,6 +1165,7 @@ export class SqlCompilerImpl implements SqlCompiler {
             throw new Error(`Unsupported operator: ${operator}`);
         }
 
+        log('Produced filter:', JSON.stringify(filter, null, 2));
         return filter;
       }
     } else if (where.type === 'unary_expr') {
@@ -626,14 +1175,78 @@ export class SqlCompilerImpl implements SqlCompiler {
         typeof where.expr === 'object' &&
         'column' in where.expr
       ) {
-        const field = this.processFieldName(where.expr.column);
+        // Handle table alias in IS NULL
+        let field;
+        if (where.expr.table && where.expr.column) {
+          // Check if the table is a registered alias
+          if (this.currentTableAliases.has(where.expr.table)) {
+            // This is a table alias, use just the field part
+            field = where.expr.column;
+            log(
+              `Using field from table alias in IS NULL: ${where.expr.table}.${where.expr.column} -> ${field}`
+            );
+          } else {
+            // This is a nested field reference
+            field = `${where.expr.table}.${where.expr.column}`;
+            log(`Using nested field in IS NULL: ${field}`);
+          }
+        } else if (where.expr.column.includes('.')) {
+          // Check if it's a field with dot notation that might have an alias prefix
+          const parts = where.expr.column.split('.');
+          const prefix = parts[0];
+
+          // Check if the prefix is a table alias we identified in the FROM clause
+          if (this.currentTableAliases.has(prefix)) {
+            // This is a table alias reference, extract just the field name
+            field = parts.slice(1).join('.');
+            log(`Identified alias in IS NULL dot notation: ${where.expr.column} -> ${field}`);
+          } else {
+            // This is a nested field
+            field = this.processFieldName(where.expr.column);
+          }
+        } else {
+          field = this.processFieldName(where.expr.column);
+        }
+
         return { [field]: { $eq: null } };
       } else if (
         where.operator === 'IS NOT NULL' &&
         typeof where.expr === 'object' &&
         'column' in where.expr
       ) {
-        const field = this.processFieldName(where.expr.column);
+        // Handle table alias in IS NOT NULL
+        let field;
+        if (where.expr.table && where.expr.column) {
+          // Check if the table is a registered alias
+          if (this.currentTableAliases.has(where.expr.table)) {
+            // This is a table alias, use just the field part
+            field = where.expr.column;
+            log(
+              `Using field from table alias in IS NOT NULL: ${where.expr.table}.${where.expr.column} -> ${field}`
+            );
+          } else {
+            // This is a nested field reference
+            field = `${where.expr.table}.${where.expr.column}`;
+            log(`Using nested field in IS NOT NULL: ${field}`);
+          }
+        } else if (where.expr.column.includes('.')) {
+          // Check if it's a field with dot notation that might have an alias prefix
+          const parts = where.expr.column.split('.');
+          const prefix = parts[0];
+
+          // Check if the prefix is a table alias we identified in the FROM clause
+          if (this.currentTableAliases.has(prefix)) {
+            // This is a table alias reference, extract just the field name
+            field = parts.slice(1).join('.');
+            log(`Identified alias in IS NOT NULL dot notation: ${where.expr.column} -> ${field}`);
+          } else {
+            // This is a nested field
+            field = this.processFieldName(where.expr.column);
+          }
+        } else {
+          field = this.processFieldName(where.expr.column);
+        }
+
         return { [field]: { $ne: null } };
       } else if (where.operator === 'NOT') {
         const subFilter = this.convertWhere(where.expr);
@@ -641,6 +1254,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       }
     }
 
+    log('Could not parse WHERE clause, returning empty filter');
     // If we can't parse the where clause, return an empty filter
     return {};
   }
@@ -688,7 +1302,15 @@ export class SqlCompilerImpl implements SqlCompiler {
         if ('expr' in column && column.expr) {
           // Handle dot notation (nested fields)
           if ('column' in column.expr && column.expr.column) {
-            const fieldName = this.processFieldName(column.expr.column);
+            // First check if the column has a table reference that might be an alias
+            let fieldName;
+            if (column.expr.table && column.expr.column) {
+              fieldName = `${column.expr.table}.${column.expr.column}`;
+              log(`Using table-prefixed field in projection: ${fieldName}`);
+            } else {
+              fieldName = this.processFieldName(column.expr.column);
+            }
+
             const outputField = column.as || fieldName;
             // For find queries, MongoDB projection uses 1
             projection[fieldName] = 1;
@@ -699,7 +1321,15 @@ export class SqlCompilerImpl implements SqlCompiler {
               projection[parentField] = 1;
             }
           } else if (column.expr.type === 'column_ref' && column.expr.column) {
-            const fieldName = this.processFieldName(column.expr.column);
+            // Handle column_ref with possible table
+            let fieldName;
+            if (column.expr.table && column.expr.column) {
+              fieldName = `${column.expr.table}.${column.expr.column}`;
+              log(`Using table-prefixed field in column_ref projection: ${fieldName}`);
+            } else {
+              fieldName = this.processFieldName(column.expr.column);
+            }
+
             const outputField = column.as || fieldName;
             // For find queries, MongoDB projection uses 1
             projection[fieldName] = 1;
@@ -719,6 +1349,11 @@ export class SqlCompilerImpl implements SqlCompiler {
             let fieldName = '';
             if (column.expr.left.column) {
               fieldName = column.expr.left.column;
+
+              // Also check if left side has a table (could be alias.field.subfield)
+              if (column.expr.left.table) {
+                fieldName = `${column.expr.left.table}.${fieldName}`;
+              }
             }
             if (fieldName && column.expr.right.column) {
               fieldName += '.' + column.expr.right.column;
@@ -732,7 +1367,15 @@ export class SqlCompilerImpl implements SqlCompiler {
             }
           }
         } else if ('type' in column && column.type === 'column_ref' && column.column) {
-          const fieldName = this.processFieldName(column.column);
+          // Handle direct column_ref with possible table
+          let fieldName;
+          if (column.table && column.column) {
+            fieldName = `${column.table}.${column.column}`;
+            log(`Using table-prefixed field in direct column_ref: ${fieldName}`);
+          } else {
+            fieldName = this.processFieldName(column.column);
+          }
+
           const outputField = column.as || fieldName;
           // For find queries, MongoDB projection uses 1
           projection[fieldName] = 1;
@@ -743,7 +1386,15 @@ export class SqlCompilerImpl implements SqlCompiler {
             projection[parentField] = 1;
           }
         } else if ('column' in column) {
-          const fieldName = this.processFieldName(column.column);
+          // Handle direct column with possible table
+          let fieldName;
+          if (column.table && column.column) {
+            fieldName = `${column.table}.${column.column}`;
+            log(`Using table-prefixed field in direct column: ${fieldName}`);
+          } else {
+            fieldName = this.processFieldName(column.column);
+          }
+
           const outputField = column.as || fieldName;
           // For find queries, MongoDB projection uses 1
           projection[fieldName] = 1;
@@ -893,7 +1544,14 @@ export class SqlCompilerImpl implements SqlCompiler {
     } else if (expr.left.type === 'column_ref') {
       // Simple column reference
       if (expr.left.table) {
-        leftPart = `${expr.left.table}.${expr.left.column}`;
+        // If the table part is short (1-2 chars), it's likely an alias
+        // We'll keep the table prefix for disambiguation
+        if (expr.left.table.length <= 2) {
+          log(`Identified likely table alias in binary expr: ${expr.left.table}`);
+          leftPart = `${expr.left.table}.${expr.left.column}`;
+        } else {
+          leftPart = `${expr.left.table}.${expr.left.column}`;
+        }
       } else {
         leftPart = expr.left.column;
       }
@@ -965,6 +1623,24 @@ export class SqlCompilerImpl implements SqlCompiler {
             );
             where.left.column = `${where.left.table}.${where.left.column}`;
             where.left.table = null;
+          }
+        }
+
+        // Also handle right side references for comparison operators
+        if (where.right && where.right.type === 'column_ref') {
+          log('Processing right-side column reference:', JSON.stringify(where.right, null, 2));
+
+          if (where.right.column && where.right.column.includes('.')) {
+            // Already has dot notation, just keep it
+            log('Right column already has dot notation:', where.right.column);
+          } else if (where.right.table && where.right.column) {
+            // Convert table.column format to a nested field path
+            log(
+              'Converting right-side table.column to nested path:',
+              `${where.right.table}.${where.right.column}`
+            );
+            where.right.column = `${where.right.table}.${where.right.column}`;
+            where.right.table = null;
           }
         }
       }
@@ -1159,38 +1835,126 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     const lookups: { from: string; localField: string; foreignField: string; as: string }[] = [];
     const mainTable = this.extractTableName(from[0]);
+    const mainAlias = from[0].as || mainTable;
+
+    // Store all aliases for JOIN handling
+    for (const fromItem of from) {
+      if (fromItem.as && fromItem.table) {
+        this.currentTableAliases.set(fromItem.as, fromItem.table);
+        log(`Registered JOIN alias: ${fromItem.as} -> ${fromItem.table}`);
+      }
+    }
 
     // Extract join conditions from the WHERE clause
     // This is a simplification that assumes the ON conditions are in the WHERE clause
     const joinConditions = this.extractJoinConditions(where, from);
 
+    // Handle JOIN syntax with explicit ON clause that comes from SQL parser
+    for (let i = 1; i < from.length; i++) {
+      // Check if this is a JOIN with an ON clause
+      if (from[i].join && from[i].on) {
+        log(`Found explicit JOIN with ON clause: ${JSON.stringify(from[i].on, null, 2)}`);
+
+        // Parse the ON condition based on different formats the parser might produce
+        if (from[i].on.expr) {
+          // Handle the case where the ON condition is in expr format
+          const onExpr = from[i].on.expr;
+          if (onExpr.type === 'binary_expr' && onExpr.operator === '=') {
+            if (onExpr.left?.type === 'column_ref' && onExpr.right?.type === 'column_ref') {
+              const leftTable = onExpr.left.table || '';
+              const leftField = onExpr.left.column || '';
+              const rightTable = onExpr.right.table || '';
+              const rightField = onExpr.right.column || '';
+
+              if (leftTable && leftField && rightTable && rightField) {
+                joinConditions.push({
+                  leftTable,
+                  leftField: `${leftTable}.${leftField}`,
+                  rightTable,
+                  rightField: `${rightTable}.${rightField}`,
+                });
+                log(
+                  `Added explicit JOIN condition from expr: ${leftTable}.${leftField} = ${rightTable}.${rightField}`
+                );
+              }
+            }
+          }
+        }
+        // Handle the case where the ON clause has direct left/right properties
+        else if (from[i].on.left && from[i].on.right) {
+          const leftTable = from[i].on.left.table || '';
+          const leftField = from[i].on.left.column || '';
+          const rightTable = from[i].on.right.table || '';
+          const rightField = from[i].on.right.column || '';
+
+          if (leftTable && leftField && rightTable && rightField) {
+            joinConditions.push({
+              leftTable,
+              leftField: `${leftTable}.${leftField}`,
+              rightTable,
+              rightField: `${rightTable}.${rightField}`,
+            });
+            log(
+              `Added explicit JOIN condition: ${leftTable}.${leftField} = ${rightTable}.${rightField}`
+            );
+          }
+        }
+      }
+    }
+
     // Process each table after the first one (the main table)
     for (let i = 1; i < from.length; i++) {
       const joinedTable = this.extractTableName(from[i]);
-      const alias = from[i].as || joinedTable;
+      const joinedAlias = from[i].as || joinedTable;
 
       // Look for JOIN condition for this table
       const joinCond = joinConditions.find(
         (cond) =>
-          (cond.leftTable === mainTable && cond.rightTable === joinedTable) ||
-          (cond.leftTable === joinedTable && cond.rightTable === mainTable)
+          (cond.leftTable === mainAlias && cond.rightTable === joinedAlias) ||
+          (cond.leftTable === joinedAlias && cond.rightTable === mainAlias)
       );
 
       if (joinCond) {
-        const localField =
-          joinCond.leftTable === mainTable ? joinCond.leftField : joinCond.rightField;
-        const foreignField =
-          joinCond.leftTable === mainTable ? joinCond.rightField : joinCond.leftField;
+        log(`Found join condition between ${mainAlias} and ${joinedAlias}`);
+
+        // Extract fields without the table prefix to use for MongoDB $lookup
+        let localField = joinCond.leftField;
+        let foreignField = joinCond.rightField;
+
+        // If fields include table prefix, remove it
+        if (joinCond.leftTable === mainAlias && localField.startsWith(`${mainAlias}.`)) {
+          localField = localField.substring(mainAlias.length + 1);
+        }
+
+        if (joinCond.rightTable === joinedAlias && foreignField.startsWith(`${joinedAlias}.`)) {
+          foreignField = foreignField.substring(joinedAlias.length + 1);
+        }
+
+        // Swap if needed to ensure the localField is from the left table
+        if (joinCond.leftTable !== mainAlias) {
+          [localField, foreignField] = [foreignField, localField];
+        }
+
+        log(`Using join fields: ${localField} = ${foreignField}`);
 
         lookups.push({
           from: joinedTable,
           localField,
           foreignField,
-          as: alias,
+          as: joinedAlias,
         });
       } else {
-        // If no explicit join condition was found, assume it's a cross join
-        // or guess based on common naming conventions (e.g., userId -> _id)
+        // If no explicit join condition was found, try to find one from the ON clause
+        // otherwise assume it's a cross join or use common naming conventions
+
+        // Check if there might be an ON clause directly in the from item
+        if (from[i].on) {
+          log(`Found ON clause in JOIN: ${JSON.stringify(from[i].on, null, 2)}`);
+          // Try to extract fields from ON clause
+          // This would need implementation specific to your SQL parser
+        }
+
+        // Default to standard naming convention
         let localField = '_id';
         let foreignField = `${mainTable.toLowerCase().replace(/s$/, '')}Id`;
 
@@ -1198,7 +1962,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           from: joinedTable,
           localField,
           foreignField,
-          as: alias,
+          as: joinedAlias,
         });
       }
     }
@@ -1219,14 +1983,63 @@ export class SqlCompilerImpl implements SqlCompiler {
     rightTable: string;
     rightField: string;
   }> {
+    log('Extracting join conditions from:', JSON.stringify(where, null, 2));
+    log('Tables:', JSON.stringify(tables, null, 2));
+
     if (!where) {
+      // Check if we have explicit join info in the tables
+      for (let i = 1; i < tables.length; i++) {
+        if (tables[i].join && tables[i].on) {
+          log('Found explicit ON condition in JOIN:', JSON.stringify(tables[i].on, null, 2));
+
+          // Parse the ON condition from the JOIN clause
+          if (
+            tables[i].on.left?.table &&
+            tables[i].on.left?.column &&
+            tables[i].on.right?.table &&
+            tables[i].on.right?.column
+          ) {
+            const leftTable = tables[i].on.left.table;
+            const leftField = `${leftTable}.${tables[i].on.left.column}`;
+            const rightTable = tables[i].on.right.table;
+            const rightField = `${rightTable}.${tables[i].on.right.column}`;
+
+            log(
+              `Extracted join condition from ON clause: ${leftTable}.${tables[i].on.left.column} = ${rightTable}.${tables[i].on.right.column}`
+            );
+
+            return [
+              {
+                leftTable,
+                leftField,
+                rightTable,
+                rightField,
+              },
+            ];
+          }
+        }
+      }
       return [];
     }
 
-    const tableNames = tables.map((t) => {
-      if (typeof t === 'string') return t;
-      return t.table;
+    // Map of table names and aliases
+    const tableMap = new Map<string, string>();
+
+    // Build map of both actual table names and aliases
+    tables.forEach((t) => {
+      if (typeof t === 'string') {
+        tableMap.set(t, t);
+      } else {
+        // Add table name
+        tableMap.set(t.table, t.table);
+        // Add alias if present
+        if (t.as) {
+          tableMap.set(t.as, t.table);
+        }
+      }
     });
+
+    log('Table name/alias map:', Object.fromEntries(tableMap.entries()));
 
     const conditions: Array<{
       leftTable: string;
@@ -1246,11 +2059,15 @@ export class SqlCompilerImpl implements SqlCompiler {
         where.right.table
       ) {
         const leftTable = where.left.table;
-        const leftField = where.left.column;
+        const leftField = `${leftTable}.${where.left.column}`;
         const rightTable = where.right.table;
-        const rightField = where.right.column;
+        const rightField = `${rightTable}.${where.right.column}`;
 
-        if (tableNames.includes(leftTable) && tableNames.includes(rightTable)) {
+        // Check if both tables/aliases exist in our mapping
+        if (tableMap.has(leftTable) && tableMap.has(rightTable) && leftTable !== rightTable) {
+          log(
+            `Found join condition: ${leftTable}.${where.left.column} = ${rightTable}.${where.right.column}`
+          );
           conditions.push({
             leftTable,
             leftField,
@@ -1259,6 +2076,11 @@ export class SqlCompilerImpl implements SqlCompiler {
           });
         }
       }
+    }
+    // Check for join condition in the ON clause
+    else if (where.type === 'on_clause' && where.on) {
+      const onConditions = this.extractJoinConditions(where.on, tables);
+      conditions.push(...onConditions);
     }
     // For AND conditions, recursively extract join conditions from both sides
     else if (where.type === 'binary_expr' && where.operator === 'AND') {

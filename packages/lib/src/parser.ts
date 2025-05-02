@@ -1,4 +1,4 @@
-import { Parser as NodeSqlParser } from 'node-sql-parser';
+import { From, Parser as NodeSqlParser } from 'node-sql-parser';
 import { SqlParser, SqlStatement } from './interfaces';
 import debug from 'debug';
 
@@ -78,6 +78,8 @@ export class SqlParserImpl implements SqlParser {
       const ast = this.parser.astify(preprocessedSql, {
         database: 'PostgreSQL',
       });
+
+      log('Preprocessed AST: ', JSON.stringify(ast, null, 2));
 
       // Process the AST to properly handle nested fields
       const processedAst = this.postProcessAst(ast);
@@ -249,6 +251,7 @@ export class SqlParserImpl implements SqlParser {
           // It's likely a nested field, not a table reference
           column.expr.column = `${column.expr.table}.${column.expr.column}`;
           column.expr.table = null;
+          log(`Setting table to null for likely nested field: ${column.expr.column}`);
         }
       }
     });

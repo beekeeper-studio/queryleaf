@@ -1,9 +1,8 @@
 import { ObjectId } from 'mongodb';
-import { testSetup, createLogger, ensureArray, ensureDocument } from './test-setup';
-
-const log = createLogger('alias');
+import { testSetup, ensureArray, ensureDocument } from './test-setup';
 
 describe('SQL Aliases Integration Tests', () => {
+  let db;
   beforeAll(async () => {
     await testSetup.init();
   }, 30000); // 30 second timeout for container startup
@@ -23,7 +22,7 @@ describe('SQL Aliases Integration Tests', () => {
   
   beforeEach(async () => {
     // Clean up collections before each test
-    const db = testSetup.getDb();
+    db = testSetup.getDb();
     await db.collection('customers').deleteMany({});
     await db.collection('products').deleteMany({});
     await db.collection('orders').deleteMany({});
@@ -31,7 +30,6 @@ describe('SQL Aliases Integration Tests', () => {
   
   afterEach(async () => {
     // Clean up collections after each test
-    const db = testSetup.getDb();
     await db.collection('customers').deleteMany({});
     await db.collection('products').deleteMany({});
     await db.collection('orders').deleteMany({});
@@ -40,7 +38,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for SELECT with table alias
   test('should return correct fields when using table alias in SELECT', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('customers').insertMany([
       { name: 'John Doe', email: 'john@example.com', active: true },
       { name: 'Jane Smith', email: 'jane@example.com', active: false }
@@ -51,7 +48,6 @@ describe('SQL Aliases Integration Tests', () => {
     const sql = "SELECT c.name, c.active FROM customers c";
     
     const results = ensureArray(await queryLeaf.execute(sql));
-    log('Table alias SELECT results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(2);
@@ -64,7 +60,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for just selecting a single field with table alias
   test('should return single field when using table alias in SELECT', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('customers').insertMany([
       { name: 'John Doe', email: 'john@example.com', active: true },
       { name: 'Jane Smith', email: 'jane@example.com', active: false }
@@ -75,7 +70,6 @@ describe('SQL Aliases Integration Tests', () => {
     const sql = "SELECT c.active FROM customers c";
     
     const results = ensureArray(await queryLeaf.execute(sql));
-    log('Single field alias SELECT results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(2);
@@ -88,7 +82,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for table alias in WHERE clause
   test('should filter correctly when using table alias in WHERE clause', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('customers').insertMany([
       { name: 'John Doe', email: 'john@example.com', active: true },
       { name: 'Jane Smith', email: 'jane@example.com', active: false }
@@ -99,7 +92,6 @@ describe('SQL Aliases Integration Tests', () => {
     const sql = "SELECT c.name FROM customers c WHERE c.active = true";
     
     const results = ensureArray(await queryLeaf.execute(sql));
-    log('WHERE clause with alias results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(1);
@@ -109,7 +101,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for combining table alias with column alias
   test('should support combined table alias with column alias', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('customers').insertMany([
       { name: 'John Doe', email: 'john@example.com', active: true },
       { name: 'Jane Smith', email: 'jane@example.com', active: false }
@@ -120,7 +111,6 @@ describe('SQL Aliases Integration Tests', () => {
     const sql = "SELECT c.name AS customer_name, c.active AS is_active FROM customers c";
     
     const results = ensureArray(await queryLeaf.execute(sql));
-    log('Combined table and column alias results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(2);
@@ -155,7 +145,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for using table alias in UPDATE statement
   test('should update correctly when using table alias in UPDATE', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('customers').insertMany([
       { name: 'John Doe', email: 'john@example.com', active: true },
       { name: 'Jane Smith', email: 'jane@example.com', active: false }
@@ -170,7 +159,6 @@ describe('SQL Aliases Integration Tests', () => {
     // Verify with a SELECT
     const selectSql = "SELECT name, active FROM customers";
     const results = ensureArray(await queryLeaf.execute(selectSql));
-    log('UPDATE with alias results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(2);
@@ -182,7 +170,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for using table alias in DELETE statement
   test('should delete correctly when using table alias in DELETE', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('customers').insertMany([
       { name: 'John Doe', email: 'john@example.com', active: true },
       { name: 'Jane Smith', email: 'jane@example.com', active: false }
@@ -197,7 +184,6 @@ describe('SQL Aliases Integration Tests', () => {
     // Verify with a SELECT
     const selectSql = "SELECT name, active FROM customers";
     const results = ensureArray(await queryLeaf.execute(selectSql));
-    log('DELETE with alias results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(1);
@@ -208,7 +194,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for multiple table aliases in a query with JOIN
   test('should handle multiple table aliases in a JOIN query', async () => {
     // Arrange
-    const db = testSetup.getDb();
     const johnId = new ObjectId();
     const janeId = new ObjectId();
     
@@ -231,14 +216,7 @@ describe('SQL Aliases Integration Tests', () => {
       JOIN orders o ON c._id = o.customerId
     `;
     
-    // Add detailed logging before executing the query
-    console.log('EXECUTING JOIN QUERY:', sql);
-    
     const results = ensureArray(await queryLeaf.execute(sql));
-    
-    // Print the detailed results for debugging
-    console.log('JOIN RESULTS LENGTH:', results.length);
-    console.log('JOIN RESULTS STRUCTURE:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results.length).toBeGreaterThan(0);
@@ -265,7 +243,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for alias in ORDER BY clause
   test('should sort correctly when using alias in ORDER BY', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('products').insertMany([
       { name: 'Laptop', category: 'Electronics', price: 1200 },
       { name: 'Mouse', category: 'Electronics', price: 25 },
@@ -277,7 +254,6 @@ describe('SQL Aliases Integration Tests', () => {
     const sql = "SELECT p.name, p.price FROM products p ORDER BY p.price DESC";
     
     const results = ensureArray(await queryLeaf.execute(sql));
-    log('ORDER BY with alias results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(3);
@@ -290,7 +266,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for using alias in GROUP BY clause
   test('should group correctly when using alias in GROUP BY', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('products').insertMany([
       { name: 'Laptop', category: 'Electronics', price: 1200 },
       { name: 'Mouse', category: 'Electronics', price: 25 },
@@ -304,7 +279,6 @@ describe('SQL Aliases Integration Tests', () => {
     const sql = "SELECT p.category, COUNT(*) as count FROM products p GROUP BY p.category";
     
     const results = ensureArray(await queryLeaf.execute(sql));
-    log('GROUP BY with alias results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results.length).toBe(2);
@@ -345,7 +319,6 @@ describe('SQL Aliases Integration Tests', () => {
   // Test case for alias with functions
   test('should handle alias with functions in SELECT', async () => {
     // Arrange
-    const db = testSetup.getDb();
     await db.collection('products').insertMany([
       { name: 'Laptop', price: 1200 },
       { name: 'Mouse', price: 25 },
@@ -357,7 +330,6 @@ describe('SQL Aliases Integration Tests', () => {
     const sql = "SELECT p.name, UPPER(p.name) as upper_name FROM products p";
     
     const results = ensureArray(await queryLeaf.execute(sql));
-    log('Function with alias results:', JSON.stringify(results, null, 2));
     
     // Assert
     expect(results).toHaveLength(3);

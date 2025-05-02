@@ -178,7 +178,10 @@ describe('QueryLeaf', () => {
       // Check if projection includes array element access
       if (commands[0].type === 'FIND' && commands[0].projection) {
         expect(commands[0].projection).toBeDefined();
-        expect(commands[0].projection['items.0.id']).toBe(1);
+        expect(commands[0].projection['id']).toBeDefined();
+        expect(commands[0].projection['id']['$getField']).toBeDefined();
+        expect(commands[0].projection['id']['$getField']['field']).toBe('id');
+        expect(commands[0].projection['id']['$getField']['input']).toBeDefined();
         expect(commands[0].projection['items']).toBe(1);
       }
     });

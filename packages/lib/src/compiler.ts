@@ -251,7 +251,7 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     // Process and normalize the field path for array access
     const { normalizedPath, hasArrayAccess, outputFieldName } = this.normalizeFieldPath(fieldPath);
-    
+
     // If the field path contains a period, check if it's a table alias reference or a nested field
     if (normalizedPath.includes('.')) {
       const parts = normalizedPath.split('.');
@@ -273,7 +273,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         }
       } else {
         // This is a nested field
-        
+
         // Check if we need to use array operators
         if (hasArrayAccess) {
           // Build a complex array access projection using the dot notation path
@@ -376,11 +376,11 @@ export class SqlCompilerImpl implements SqlCompiler {
                 col === '*' || (typeof col === 'object' && col.expr && col.expr.type === 'star')
             );
 
-          log(`CURRENT TABLE ALIASES: `, JSON.stringify(this.currentTableAliases, null, 2))
+          log(`CURRENT TABLE ALIASES: `, JSON.stringify(this.currentTableAliases, null, 2));
           // Process explicit columns first
           if (ast.columns && !hasStar) {
             for (const column of ast.columns) {
-              log(`Processing explicit column: `, JSON.stringify(column, null, 2))
+              log(`Processing explicit column: `, JSON.stringify(column, null, 2));
               if (
                 typeof column === 'object' &&
                 column.expr &&
@@ -404,7 +404,9 @@ export class SqlCompilerImpl implements SqlCompiler {
             }
           }
 
-          log(`HAS STAR FOR ${lookup.as}: ${hasStar}, joinFieldMapping: ${JSON.stringify(joinFieldMapping, null, 2)}`)
+          log(
+            `HAS STAR FOR ${lookup.as}: ${hasStar}, joinFieldMapping: ${JSON.stringify(joinFieldMapping, null, 2)}`
+          );
           // If we have a SELECT * or no explicit joined fields were found,
           // we need to promote ALL fields from the joined collection
           if (hasStar || Object.keys(joinFieldMapping).length === 0) {
@@ -456,7 +458,12 @@ export class SqlCompilerImpl implements SqlCompiler {
       if (ast.columns) {
         const projection: Record<string, any> = {};
         // Track array access fields that need special handling
-        const arrayAccessFields: {field: string, path: string, index: number, subField?: string}[] = [];
+        const arrayAccessFields: {
+          field: string;
+          path: string;
+          index: number;
+          subField?: string;
+        }[] = [];
 
         // For JOIN queries, we need to handle nested paths differently
         const isJoinQuery = ast.from && ast.from.length > 1;
@@ -497,7 +504,9 @@ export class SqlCompilerImpl implements SqlCompiler {
             // First process the field path to handle array indexing notation
             // This transforms items__ARRAY_0__name => items.0.name for MongoDB dot notation
             const processedPath = this.processFieldName(fieldPath);
-            log(`$Processed aliased field path with array notation: ${fieldPath} -> ${processedPath}`);
+            log(
+              `$Processed aliased field path with array notation: ${fieldPath} -> ${processedPath}`
+            );
 
             // Check if this field path contains array access notation
             const arrayInfo = this.getArrayAccessInfo(processedPath);
@@ -529,36 +538,40 @@ export class SqlCompilerImpl implements SqlCompiler {
                 // This is an array access notation
                 const firstArrayIndex = arrayInfo.arrayIndices[0];
                 const indexValue = parseInt(parts[firstArrayIndex]);
-                
+
                 if (firstArrayIndex === 1) {
                   // Simple case: array is the first level, like actors.0.name
                   const arrayField = parts[0];
                   const subPath = parts.slice(2).join('.');
-                  
+
                   // Add to list of array fields that need special handling
                   // TODO (@day): this might need some changes
                   arrayAccessFields.push({
                     field: column.as,
                     path: processedPath,
                     index: indexValue,
-                    subField: subPath || undefined
+                    subField: subPath || undefined,
                   });
-                  
+
                   // Also add it to the projection so it's included
                   projection[column.as] = {
                     $getField: {
                       field: subPath || 'value', // Fallback to extract the whole value
                       input: {
-                        $arrayElemAt: [`$${arrayField}`, indexValue]
-                      }
-                    }
+                        $arrayElemAt: [`$${arrayField}`, indexValue],
+                      },
+                    },
                   };
-                  
-                  log(`$Added array access field to alias: ${column.as} using $arrayElemAt operator`);
+
+                  log(
+                    `$Added array access field to alias: ${column.as} using $arrayElemAt operator`
+                  );
                 } else {
                   // More complex nested array case - use dot notation as fallback
                   projection[column.as] = `$${processedPath}`;
-                  log(`$Added complex nested array field to alias: ${column.as} = $${processedPath}`);
+                  log(
+                    `$Added complex nested array field to alias: ${column.as} = $${processedPath}`
+                  );
                 }
               } else {
                 // Nested field with alias
@@ -575,92 +588,94 @@ export class SqlCompilerImpl implements SqlCompiler {
             // Check if this is an array access field without alias (like actors[0].name)
             const processedPath = this.processFieldName(fieldPath);
             const arrayInfo = this.getArrayAccessInfo(processedPath);
-            
+
             if (arrayInfo.hasArrayAccess) {
               // This is array access without alias
               const parts = processedPath.split('.');
               const arrayField = parts[0];
               const indexValue = parseInt(parts[1]);
               const subField = parts.slice(2).join('.');
-              
+
               // If this is a nested field in an array element, extract just the property name
               const outputField = subField || parts[parts.length - 1];
-              
+
               // Add to list of array fields that need special handling
               arrayAccessFields.push({
                 field: outputField,
                 path: processedPath,
                 index: indexValue,
-                subField: subField || undefined
+                subField: subField || undefined,
               });
-              
+
               // Add to projection so it's included
               projection[outputField] = {
                 $getField: {
                   field: subField || 'value',
                   input: {
-                    $arrayElemAt: [`$${arrayField}`, indexValue]
-                  }
-                }
+                    $arrayElemAt: [`$${arrayField}`, indexValue],
+                  },
+                },
               };
-              
-              log(`$Added array access field without alias: ${outputField} using path ${processedPath}`);
+
+              log(
+                `$Added array access field without alias: ${outputField} using path ${processedPath}`
+              );
             } else {
               // Regular field without array access
               this.addFieldToProjection(projection, fieldPath);
             }
           }
         }
-        
+
         // Special handling for array access fields - we need to create field extraction
         // expressions to flatten nested array elements to root level
-        log(`arrayAccessFields: `, arrayAccessFields)
+        log(`arrayAccessFields: `, arrayAccessFields);
         if (arrayAccessFields.length > 0 && !isJoinQuery) {
           const arrayFieldsProject: Record<string, any> = {};
-          
+
           // Process each array access field
-          arrayAccessFields.forEach(({field, path, index, subField}) => {
+          arrayAccessFields.forEach(({ field, path, index, subField }) => {
             const parts = path.split('.');
             const arrayField = parts[0];
-            
+
             // Extract specific fields from array elements
             if (subField) {
               // Check if the subField contains multiple nested levels or array indices
               if (subField.includes('.')) {
                 // This is a complex nested path like addresses[0].details.street
                 // or addresses[0].details.pastAddresses[0].street
-                
+
                 // Start with the array element
                 let currentExpr: any = {
-                  $arrayElemAt: [`$${arrayField}`, index]
+                  $arrayElemAt: [`$${arrayField}`, index],
                 };
-                
+
                 // Build an expression dynamically based on the subField components
                 // First, normalize the path in case it contains any array indices
                 const normalizedSubField = this.processFieldName(subField);
                 const subParts = normalizedSubField.split('.');
-                
+
                 // Process each part of the path
                 for (let i = 0; i < subParts.length; i++) {
                   const part = subParts[i];
-                  
+
                   // Check if this is a numeric array index
                   if (/^\d+$/.test(part)) {
                     // This part is a numeric array index, use $arrayElemAt
                     currentExpr = {
-                      $arrayElemAt: [currentExpr, parseInt(part)]
+                      $arrayElemAt: [currentExpr, parseInt(part)],
                     };
                   } else {
                     // This is a field name, use $getField
                     currentExpr = {
                       $getField: {
                         field: part,
-                        input: currentExpr
-                      }
+                        input: currentExpr,
+                      },
                     };
                   }
                 }
-                
+
                 // Set the final expression
                 arrayFieldsProject[field] = currentExpr;
                 log(`$Added complex nested field/array access for ${field}: ${path}.${subField}`);
@@ -671,25 +686,27 @@ export class SqlCompilerImpl implements SqlCompiler {
                   $getField: {
                     field: subField,
                     input: {
-                      $arrayElemAt: [`$${arrayField}`, index]
-                    }
-                  }
+                      $arrayElemAt: [`$${arrayField}`, index],
+                    },
+                  },
                 };
               }
             } else {
               // Just extract the whole array element
               arrayFieldsProject[field] = {
-                $arrayElemAt: [`$${arrayField}`, index]
+                $arrayElemAt: [`$${arrayField}`, index],
               };
             }
           });
-          
+
           // Add the array fields as an $addFields stage instead of $project
           // This preserves all the original fields while adding the array access fields
           aggregateCommand.pipeline.push({ $addFields: arrayFieldsProject });
-          log(`$Added array access fields using $addFields: ${JSON.stringify(arrayFieldsProject, null, 2)}`);
+          log(
+            `$Added array access fields using $addFields: ${JSON.stringify(arrayFieldsProject, null, 2)}`
+          );
         }
-        
+
         // For JOIN queries, we need a special handling
         else if (isJoinQuery) {
           // Add detailed debugging for JOIN queries
@@ -701,7 +718,6 @@ export class SqlCompilerImpl implements SqlCompiler {
           // For JOIN queries, we need to handle the projection differently to flatten the results
           // First, we'll create a projection that preserves the table aliases in the pipeline
           const renamedFieldsProject: Record<string, any> = {};
-
 
           // Add a final stage to correctly handle JOIN results
           // We need the column values to be accessible directly at the top level,
@@ -735,44 +751,58 @@ export class SqlCompilerImpl implements SqlCompiler {
               if (typeof column === 'object' && column.expr) {
                 let table = column.expr.table;
                 let field = column.expr.column;
-                
+
                 // Special handling for array access notation without table reference
                 // When we have something like scenes[0].name directly, we need to treat it as a field on the main table
                 if (!table && field && field.includes('__ARRAY_')) {
                   // Assume it belongs to the main table
                   table = ast.from[0].as;
-                  log(`$Processing array access field without table reference: ${field}, assigning to main table: ${table}`);
+                  log(
+                    `$Processing array access field without table reference: ${field}, assigning to main table: ${table}`
+                  );
                 }
 
                 log(`Processing JOIN column: table=${table}, field=${field}`);
 
-                if ((table && field && this.currentTableAliases.has(table)) || 
-                    // Also handle fields without table references as belonging to the main table
-                    (!table && field)) {
-
+                if (
+                  (table && field && this.currentTableAliases.has(table)) ||
+                  // Also handle fields without table references as belonging to the main table
+                  (!table && field)
+                ) {
                   const outputField = this.extractOutputField(field, column.as);
-                  const processedField = this.processFieldName(field);
-                 
-                  log(`$Output field name: ${outputField} from ${field} (processed: ${processedField})`);
-
-                  // Create a path to the field, which could be in the root doc or nested
-                  // in a joined doc (like "o.product")
-                  // The key fix: Use proper MongoDB dot notation for accessing fields
-                  // Fields from main table can be accessed directly, fields from joined tables need the alias prefix
-                  let sourcePath;
-
-                  if (table === ast.from[0].as) {
-                    const fieldWithoutTablePrefix = processedField.replace(`${table}.`, '');
-                    sourcePath = `$${fieldWithoutTablePrefix}`;
-                    log(`$Main table field path: $${fieldWithoutTablePrefix}`);
+                  const arrayInfo = this.normalizeFieldPath(field);
+                  if (arrayInfo.hasArrayAccess) {
+                    let fieldName = this.processFieldName(field);
+                    if (table !== ast.from[0].as) {
+                      fieldName = `${table}.${fieldName}`;
+                    }
+                    this.buildArrayAccessProjection(addFieldsStage, fieldName, outputField);
                   } else {
-                    sourcePath = `$${table}.${processedField}`;
-                    log(`$Joined table field path: ${sourcePath}`);
-                  }
+                    const processedField = this.processFieldName(field);
 
-                  // Add this field mapping
-                  addFieldsStage[outputField] = sourcePath;
-                  log(`JOIN: Creating flat field ${outputField} = ${sourcePath}`);
+                    log(
+                      `$Output field name: ${outputField} from ${field} (processed: ${processedField})`
+                    );
+
+                    // Create a path to the field, which could be in the root doc or nested
+                    // in a joined doc (like "o.product")
+                    // The key fix: Use proper MongoDB dot notation for accessing fields
+                    // Fields from main table can be accessed directly, fields from joined tables need the alias prefix
+                    let sourcePath;
+
+                    if (table === ast.from[0].as) {
+                      const fieldWithoutTablePrefix = processedField.replace(`${table}.`, '');
+                      sourcePath = `$${fieldWithoutTablePrefix}`;
+                      log(`$Main table field path: $${fieldWithoutTablePrefix}`);
+                    } else {
+                      sourcePath = `$${table}.${processedField}`;
+                      log(`$Joined table field path: ${sourcePath}`);
+                    }
+
+                    // Add this field mapping
+                    addFieldsStage[outputField] = sourcePath;
+                    log(`JOIN: Creating flat field ${outputField} = ${sourcePath}`);
+                  }
                 } else {
                   log(
                     `Skipped column - missing table alias or field: ${JSON.stringify(column, null, 2)}`
@@ -809,7 +839,7 @@ export class SqlCompilerImpl implements SqlCompiler {
 
               for (const field of outputFields) {
                 log(`FIELD: `, field);
-                includeFields[field] = 1
+                includeFields[field] = 1;
               }
 
               // First add a projection to include only the fields we want
@@ -818,11 +848,11 @@ export class SqlCompilerImpl implements SqlCompiler {
                 JSON.stringify(includeFields, null, 2)
               );
               aggregateCommand.pipeline.push({ $project: includeFields });
-              
+
               // Then add a separate projection to exclude nested documents
               // MongoDB doesn't allow mixing inclusion and exclusion in the same projection
               const excludeJoinedDocsOnly: Record<string, number> = {};
-              
+
               // Now specifically exclude the nested documents to prevent duplication
               for (const fromItem of ast.from) {
                 if (fromItem.as && fromItem.as !== ast.from[0].as) {
@@ -835,7 +865,7 @@ export class SqlCompilerImpl implements SqlCompiler {
                 'Adding $project stage to exclude nested docs:',
                 JSON.stringify(excludeJoinedDocsOnly, null, 2)
               );
-              
+
               // Only add the exclusion stage if we have fields to exclude
               if (Object.keys(excludeJoinedDocsOnly).length > 0) {
                 aggregateCommand.pipeline.push({ $project: excludeJoinedDocsOnly });
@@ -1028,15 +1058,15 @@ export class SqlCompilerImpl implements SqlCompiler {
           // Process the field name to handle nested fields with dot notation
           fieldName = this.processFieldName(setItem.column);
         }
-        
+
         // After field name processing, check if it contains array access notation
         const processedFieldName = this.processFieldName(fieldName);
         const arrayInfo = this.getArrayAccessInfo(processedFieldName);
-        
+
         log(
           `$Setting UPDATE field: ${processedFieldName} = ${JSON.stringify(this.convertValue(setItem.value))}`
         );
-        
+
         // Use the processed field name with proper array indexing
         update[processedFieldName] = this.convertValue(setItem.value);
       }
@@ -1362,6 +1392,15 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     // First pass - process all fields
     const fieldsToProject: string[] = [];
+    // Track array access fields for special handling
+    const arrayAccessInfoMap = new Map<
+      string,
+      {
+        outputField: string;
+        fieldName: string;
+      }
+    >();
+
     columns.forEach((column) => {
       if (typeof column === 'object') {
         if ('expr' in column && column.expr) {
@@ -1369,24 +1408,42 @@ export class SqlCompilerImpl implements SqlCompiler {
           if ('column' in column.expr && column.expr.column) {
             // First check if the column has a table reference that might be an alias
             let fieldName;
-            if (column.expr.table && column.expr.column && this.currentTableAliases.has(column.expr.table)) {
+            if (
+              column.expr.table &&
+              column.expr.column &&
+              this.currentTableAliases.has(column.expr.table)
+            ) {
               fieldName = `${column.expr.table}.${column.expr.column}`;
               log(`$Using table-prefixed field in projection: ${fieldName}`);
             } else {
               fieldName = this.processFieldName(column.expr.column);
             }
-            const outputName = this.extractOutputField(fieldName, column.as)
+            const outputName = this.extractOutputField(fieldName, column.as);
             fieldsToProject.push(outputName);
+
+            const arrayInfo = this.getArrayAccessInfo(fieldName);
+
+            if (arrayInfo.hasArrayAccess) {
+              parentFields.add(arrayInfo.parts[0]);
+              arrayAccessInfoMap.set(outputName, {
+                outputField: outputName,
+                fieldName,
+              });
+            }
           } else if (column.expr.type === 'column_ref' && column.expr.column) {
             // Handle column_ref with possible table
             let fieldName;
-            if (column.expr.table && column.expr.column && this.currentTableAliases.has(column.expr.table)) {
+            if (
+              column.expr.table &&
+              column.expr.column &&
+              this.currentTableAliases.has(column.expr.table)
+            ) {
               fieldName = `${column.expr.table}.${column.expr.column}`;
               log(`Using table-prefixed field in column_ref projection: ${fieldName}`);
             } else {
               fieldName = this.processFieldName(column.expr.column);
             }
-            const outputName = this.extractOutputField(fieldName, column.as)
+            const outputName = this.extractOutputField(fieldName, column.as);
             fieldsToProject.push(outputName);
           } else if (
             column.expr.type === 'binary_expr' &&
@@ -1406,7 +1463,7 @@ export class SqlCompilerImpl implements SqlCompiler {
             }
             if (fieldName && column.expr.right.column) {
               fieldName += '.' + column.expr.right.column;
-              const outputName = this.extractOutputField(fieldName, column.as)
+              const outputName = this.extractOutputField(fieldName, column.as);
               fieldsToProject.push(outputName);
             }
           }
@@ -1419,7 +1476,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           } else {
             fieldName = this.processFieldName(column.column);
           }
-          const outputName = this.extractOutputField(fieldName, column.as)
+          const outputName = this.extractOutputField(fieldName, column.as);
           fieldsToProject.push(outputName);
         } else if ('column' in column) {
           // Handle direct column with possible table
@@ -1430,7 +1487,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           } else {
             fieldName = this.processFieldName(column.column);
           }
-          const outputName = this.extractOutputField(fieldName, column.as)
+          const outputName = this.extractOutputField(fieldName, column.as);
           fieldsToProject.push(outputName);
         }
       } else if (typeof column === 'string') {
@@ -1441,71 +1498,20 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     // Handle array access fields - since MongoDB 4.4 doesn't allow including both a field and its subfields,
     // we'll detect array paths and handle them specially
-    
-    // Track array access fields for special handling
-    const arrayAccessInfoMap = new Map<string, {
-      path: string,
-      fieldName: string,
-      arrayField: string,
-      index: number,
-      subField?: string
-    }>();
-    
-    fieldsToProject.forEach(fieldName => {
+
+    fieldsToProject.forEach((fieldName) => {
       // Check for array access in the field path
       const arrayInfo = this.getArrayAccessInfo(fieldName);
-      
+
       if (arrayInfo.hasArrayAccess) {
         // This is a field with array access like actors.0.name
         log(`$Found array access in field: ${fieldName}`);
-        
-        // We need to use $slice and field projection for arrays to work around path collision issues
-        const parts = fieldName.split('.');
-        const baseField = parts[0]; // e.g., "actors"
-        
-        if (parts.length >= 3 && /^\d+$/.test(parts[1])) {
-          // This is a path like "actors.0.name" - extract the parts:
-          const arrayField = parts[0];               // "actors"
-          const indexValue = parseInt(parts[1]);     // 0
-          const subField = parts.slice(2).join('.'); // "name"
-          
-          // Setting specific array element field without including the whole array
-          // If we need name & role from actors[0], this ensures we get both without
-          // path collision issues
-          projection[fieldName] = 1;
-          
-          // Store info for field name flattening
-          const outputField = subField || parts[parts.length - 1];
-          arrayAccessInfoMap.set(outputField, {
-            path: fieldName,
-            fieldName: outputField,
-            arrayField,
-            index: indexValue,
-            subField: subField || undefined
-          });
-          
-          // Mark this field as having been projected to avoid collisions
-          parentFields.add(baseField);
-        } else if (parts.length === 2 && /^\d+$/.test(parts[1])) {
-          // This is a path like "actors.0" - just projecting a specific array element
-          projection[fieldName] = 1;
-          
-          // Store info for field name flattening
-          arrayAccessInfoMap.set(parts[1], {
-            path: fieldName,
-            fieldName: parts[1],
-            arrayField: parts[0],
-            index: parseInt(parts[1])
-          });
-          
-          parentFields.add(baseField);
-        }
       } else if (fieldName.includes('.')) {
         // Regular nested field
         // Check if any parent has already been included
         const parts = fieldName.split('.');
         const baseField = parts[0];
-        
+
         if (!parentFields.has(baseField)) {
           projection[fieldName] = 1;
         } else {
@@ -1514,40 +1520,22 @@ export class SqlCompilerImpl implements SqlCompiler {
         }
       } else {
         // Regular top-level field
-        log(`Adding ${fieldName} to projection`)
+        log(`Adding ${fieldName} to projection`);
         projection[fieldName] = 1;
       }
     });
-    
+
     // For array access fields, we need to use MongoDB's aggregation operators directly in the projection
     if (arrayAccessInfoMap.size > 0) {
-      log(`$Adding MongoDB operators for array access fields: ${JSON.stringify(Array.from(arrayAccessInfoMap.entries()))}`);
-      
+      log(
+        `$Adding MongoDB operators for array access fields: ${JSON.stringify(Array.from(arrayAccessInfoMap.entries()))}`
+      );
+
       // Add MongoDB's field extraction operators for array access fields
       for (const [fieldName, info] of arrayAccessInfoMap.entries()) {
-        const { arrayField, index, subField } = info;
-        
-        // MongoDB's projection can use aggregation operators
-        if (subField) {
-          // Use $getField to extract nested field from array element
-          projection[fieldName] = { 
-            $getField: { 
-              field: subField, 
-              input: { 
-                $arrayElemAt: [`$${arrayField}`, index] 
-              } 
-            } 
-          };
-        } else {
-          // Extract the whole array element
-          projection[fieldName] = { $arrayElemAt: [`$${arrayField}`, index] };
-        }
-        
-        // Remove the original dot notation field if it was added
-        const dotPath = `${arrayField}.${index}${subField ? '.' + subField : ''}`;
-        if (projection[dotPath]) {
-          delete projection[dotPath];
-        }
+        const { outputField, fieldName } = info;
+
+        this.buildArrayAccessProjection(projection, fieldName, outputField);
       }
     }
 
@@ -1592,7 +1580,7 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     return processed;
   }
-  
+
   /**
    * Normalizes a field path by handling various array notation formats
    * and returns information for further processing
@@ -1605,44 +1593,46 @@ export class SqlCompilerImpl implements SqlCompiler {
   } {
     // First, process SQL-style array syntax (items__ARRAY_0__name) to MongoDB dot notation
     const processedPath = this.processFieldName(fieldPath);
-    
+
     // Convert underscore-number patterns to standard dot notation (addresses_0 -> addresses.0)
     const underscoreArrayPattern = /(\w+)_(\d+)/g;
     const normalizedPath = processedPath.replace(underscoreArrayPattern, '$1.$2');
-    
+
     if (normalizedPath !== processedPath) {
-      log(`$Converted underscore array path to dot notation: ${processedPath} -> ${normalizedPath}`);
+      log(
+        `$Converted underscore array path to dot notation: ${processedPath} -> ${normalizedPath}`
+      );
     }
-    
+
     // Identify array indices
     const parts = normalizedPath.split('.');
     const arrayIndices: number[] = [];
-    
+
     parts.forEach((part, index) => {
       if (/^\d+$/.test(part)) {
         arrayIndices.push(index);
       }
     });
-    
+
     // Create a standardized output field name
     // For array access and nested fields, we use underscores in the output field name
-    const outputFieldName = normalizedPath.includes('.') 
+    const outputFieldName = normalizedPath.includes('.')
       ? normalizedPath.replace(/\./g, '_')
       : normalizedPath;
-    
+
     return {
       normalizedPath,
       hasArrayAccess: arrayIndices.length > 0,
       outputFieldName,
-      arrayIndices
+      arrayIndices,
     };
   }
-  
+
   /**
    * Get array access information from a normalized path
    * @deprecated Use normalizeFieldPath instead
    */
-  private getArrayAccessInfo(fieldPath: string): { 
+  private getArrayAccessInfo(fieldPath: string): {
     hasArrayAccess: boolean;
     arrayIndices: number[];
     parts: string[];
@@ -1650,178 +1640,104 @@ export class SqlCompilerImpl implements SqlCompiler {
     // For backward compatibility, we maintain this method but implement using normalizeFieldPath
     const { hasArrayAccess, arrayIndices } = this.normalizeFieldPath(fieldPath);
     const parts = fieldPath.split('.');
-    
+
     return {
       hasArrayAccess,
       arrayIndices,
-      parts
+      parts,
     };
   }
-  
+
   /**
    * Builds a MongoDB projection expression for array access
    * Handles simple and complex nested array access patterns
    */
   private buildArrayAccessProjection(
-    projection: Record<string, any>, 
-    fieldPath: string, 
+    projection: Record<string, any>,
+    fieldPath: string,
     outputFieldName: string
   ): void {
-    // Check if the path has an underscore pattern like "addresses_0" that needs to be handled
-    // as array access instead of using the dot notation
-    const underscoreArrayPattern = /(\w+)_(\d+)/g;
-    let arrayPath = fieldPath;
-    
-    // If the path contains underscores followed by numbers, we need to
-    // handle it using $arrayElemAt for proper MongoDB array access
-    // Example: addresses_0.details.street => addresses.0.details.street
-    if (arrayPath.match(underscoreArrayPattern)) {
-      log(`$Handling underscore-based array notation: ${arrayPath}`);
-      
-      // First, normalize the path by replacing all underscore-number combinations with dot notation
-      arrayPath = arrayPath.replace(underscoreArrayPattern, '$1.$2');
-      log(`$Normalized underscore array path: ${fieldPath} -> ${arrayPath}`);
-      
-      // Now process the normalized path
-      const parts = arrayPath.split('.');
-      let currentExpr: any = null;
-      
-      // Start with the base object
-      let currentObj = `$${parts[0]}`;
-      let startIndex = 1;
-      
-      // Build a chain of $arrayElemAt and $getField operations
-      for (let i = startIndex; i < parts.length; i++) {
-        const part = parts[i];
-        
-        if (/^\d+$/.test(part)) {
-          // This is a numeric index, use $arrayElemAt
-          const indexValue = parseInt(part);
-          
-          if (currentExpr === null) {
-            // This is the first operation in the chain
-            currentExpr = {
-              $arrayElemAt: [currentObj, indexValue]
-            };
-          } else {
-            // Nest this operation in the previous one
-            currentExpr = {
-              $arrayElemAt: [currentExpr, indexValue]
-            };
-          }
-          
-          log(`$Added array access at index ${indexValue}`);
-        } else {
-          // This is a field name, use $getField
-          if (currentExpr === null) {
-            // If we haven't created any expression yet, use direct path
-            if (i === 1) {
-              // We're at the first operation and it's a field
-              currentObj = `$${parts[0]}.${part}`;
-            } else {
-              // We need to build a getField expression
-              currentExpr = {
-                $getField: {
-                  field: part,
-                  input: currentObj
-                }
-              };
-            }
-          } else {
-            // Nest this field access in the previous operation
-            currentExpr = {
-              $getField: {
-                field: part,
-                input: currentExpr
-              }
-            };
-          }
-          
-          log(`$Added field access for ${part}`);
-        }
-      }
-      
-      // Set the final expression in the projection
-      if (currentExpr !== null) {
-        projection[outputFieldName] = currentExpr;
-      } else {
-        // If we didn't build an expression, use the path directly
-        projection[outputFieldName] = currentObj;
-      }
-      
-      log(`$Final array access expression for ${outputFieldName}: ${JSON.stringify(projection[outputFieldName], null, 2)}`);
-      return;
-    }
-    
     // Continue with standard dot-notation array processing
     const parts = fieldPath.split('.');
     const arrayInfo = this.getArrayAccessInfo(fieldPath);
-    
+
     if (!arrayInfo.hasArrayAccess) {
       // Not an array access field, use standard projection
       projection[outputFieldName] = `$${fieldPath}`;
       log(`$Added standard field to projection: ${outputFieldName} = $${fieldPath}`);
       return;
     }
-    
+
     // Get the first array index position
     const firstArrayIndex = arrayInfo.arrayIndices[0];
     const indexValue = parseInt(parts[firstArrayIndex]);
-    
+
     // Simple case: array at the first level with potential nested fields
     if (firstArrayIndex === 0) {
+      log(`firstArrayIndex === 0: ${outputFieldName}`);
       // Array is the root, like: 0.field.subfield
       const arrayField = parts[0];
       const subPath = parts.slice(1).join('.');
-      
+
       this.handleSimpleArrayAccess(projection, arrayField, indexValue, subPath, outputFieldName);
     } else if (firstArrayIndex === 1) {
+      log(`firstArrayIndex === 1: ${outputFieldName}`);
       // Array is the second level, like: field.0.subfield
       const arrayField = parts[0];
       const subPath = parts.slice(2).join('.');
-      
+
       this.handleSimpleArrayAccess(projection, arrayField, indexValue, subPath, outputFieldName);
     } else if (arrayInfo.arrayIndices.length === 1) {
+      log(`ONLY ONE ARRAY INDEX: ${outputFieldName}`);
       // Only one array index, but it's deeper in the path
       const prefix = parts.slice(0, firstArrayIndex).join('.');
       const indexValue = parseInt(parts[firstArrayIndex]);
       const suffix = parts.slice(firstArrayIndex + 1).join('.');
-      
+
       // Build a nested expression with $arrayElemAt
       if (suffix) {
         projection[outputFieldName] = {
           $getField: {
             field: suffix,
             input: {
-              $arrayElemAt: [{
-                $getField: {
-                  field: parts[firstArrayIndex - 1],
-                  input: `$${prefix.substring(0, prefix.lastIndexOf('.'))}`
-                }
-              }, indexValue]
-            }
-          }
+              $arrayElemAt: [
+                {
+                  $getField: {
+                    field: parts[firstArrayIndex - 1],
+                    input: `$${prefix.substring(0, prefix.lastIndexOf('.'))}`,
+                  },
+                },
+                indexValue,
+              ],
+            },
+          },
         };
       } else {
+        log(`ELSE: ${outputFieldName}`);
         projection[outputFieldName] = {
-          $arrayElemAt: [{
-            $getField: {
-              field: parts[firstArrayIndex - 1],
-              input: `$${prefix.substring(0, prefix.lastIndexOf('.'))}`
-            }
-          }, indexValue]
+          $arrayElemAt: [
+            {
+              $getField: {
+                field: parts[firstArrayIndex - 1],
+                input: `$${prefix.substring(0, prefix.lastIndexOf('.'))}`,
+              },
+            },
+            indexValue,
+          ],
         };
       }
-      
+
       log(`$Added complex nested array access to projection: ${outputFieldName}`);
     } else {
       // Multiple array indices - very complex case
       // For this case, we'll fall back to the simple dot notation which works in some cases
       projection[outputFieldName] = `$${fieldPath}`;
-      log(`$Using fallback dot notation for complex array access: ${outputFieldName} = $${fieldPath}`);
+      log(
+        `$Using fallback dot notation for complex array access: ${outputFieldName} = $${fieldPath}`
+      );
     }
   }
-  
+
   /**
    * Handles array access patterns at any level of nesting
    * This supports patterns like:
@@ -1836,67 +1752,69 @@ export class SqlCompilerImpl implements SqlCompiler {
     subPath: string,
     outputFieldName: string
   ): void {
-    log(`$Processing array access: ${arrayField}[${indexValue}]${subPath ? '.' + subPath : ''} as ${outputFieldName}`);
-    
+    log(
+      `$Processing array access: ${arrayField}[${indexValue}]${subPath ? '.' + subPath : ''} as ${outputFieldName}`
+    );
+
     // Special handling for common complex patterns
     // This pattern matches addresses[0].details.street and similar patterns
     if (subPath && subPath.includes('.')) {
       const pathParts = subPath.split('.');
-      
+
       // Special handling for nested object patterns like addresses[0].details.street
       if (pathParts.length >= 2) {
         let currentExpr: any = {
-          $arrayElemAt: [`$${arrayField}`, indexValue]
+          $arrayElemAt: [`$${arrayField}`, indexValue],
         };
-        
+
         // Process each part of the path to build a nested expression
         for (let i = 0; i < pathParts.length; i++) {
           const part = pathParts[i];
-          
+
           if (/^\d+$/.test(part)) {
             // This is an array index - another level of array access
             currentExpr = {
-              $arrayElemAt: [currentExpr, parseInt(part)]
+              $arrayElemAt: [currentExpr, parseInt(part)],
             };
           } else {
             // This is a field access
             currentExpr = {
               $getField: {
                 field: part,
-                input: currentExpr
-              }
+                input: currentExpr,
+              },
             };
           }
         }
-        
+
         // Set the fully built nested expression
         projection[outputFieldName] = currentExpr;
         log(`$Added optimized multi-level nested expression for ${outputFieldName}`);
         return;
       }
     }
-    
+
     if (subPath) {
-      // Check if the subPath contains nested fields 
+      // Check if the subPath contains nested fields
       if (subPath.includes('.')) {
         // Handle complex nested path inside array element
         // e.g., actors.0.details.name needs nested $getField expressions
         const subParts = subPath.split('.');
-        
+
         // Start with the array element access
         let expr: any = {
-          $arrayElemAt: [`$${arrayField}`, indexValue]
+          $arrayElemAt: [`$${arrayField}`, indexValue],
         };
-        
+
         // Build nested $getField expressions for each part
         for (const part of subParts) {
           if (part === '') continue; // Skip empty parts
-          
+
           // Check if this part is a numeric index (another array access)
           if (/^\d+$/.test(part)) {
             // This is an array index within the nested path
             expr = {
-              $arrayElemAt: [expr, parseInt(part)]
+              $arrayElemAt: [expr, parseInt(part)],
             };
             log(`$Adding nested array access at index ${part}`);
           } else {
@@ -1904,13 +1822,13 @@ export class SqlCompilerImpl implements SqlCompiler {
             expr = {
               $getField: {
                 field: part,
-                input: expr
-              }
+                input: expr,
+              },
             };
             log(`$Adding nested field access for ${part}`);
           }
         }
-        
+
         // Store the complex expression in the projection
         projection[outputFieldName] = expr;
         log(`$Added complex nested field array access to projection: ${outputFieldName}`);
@@ -1920,22 +1838,25 @@ export class SqlCompilerImpl implements SqlCompiler {
           $getField: {
             field: subPath,
             input: {
-              $arrayElemAt: [`$${arrayField}`, indexValue]
-            }
-          }
+              $arrayElemAt: [`$${arrayField}`, indexValue],
+            },
+          },
         };
         log(`$Added array access with nested field to projection: ${outputFieldName}`);
       }
     } else {
       // Just need the array element itself: items.0
       projection[outputFieldName] = {
-        $arrayElemAt: [`$${arrayField}`, indexValue]
+        $arrayElemAt: [`$${arrayField}`, indexValue],
       };
       log(`$Added simple array access to projection: ${outputFieldName}`);
     }
-    
+
     // Debug log the final expression for this field
-    log(`$Final projection expression for ${outputFieldName}:`, JSON.stringify(projection[outputFieldName], null, 2));
+    log(
+      `$Final projection expression for ${outputFieldName}:`,
+      JSON.stringify(projection[outputFieldName], null, 2)
+    );
   }
   /**
    * Check if a name is an actual table reference in the FROM clause
@@ -2597,7 +2518,7 @@ export class SqlCompilerImpl implements SqlCompiler {
   private extractOutputField(field: string, as?: string): string {
     // Process the field to handle array access notation first (converts __ARRAY_0__ to .0.)
     const processedField = this.processFieldName(field);
-    
+
     // Output field name (possibly aliased)
     // If there's an alias, use it
     // Otherwise, if the field has a table prefix or dots, use just the final part (excluding array indices)
@@ -2609,7 +2530,7 @@ export class SqlCompilerImpl implements SqlCompiler {
       // For dot notation fields, use the last part (excluding array indices)
       const parts = processedField.split('.');
       // Get the last non-numeric part (skipping array indices)
-      const lastNonNumericPart = parts.filter(part => isNaN(Number(part))).pop();
+      const lastNonNumericPart = parts.filter((part) => isNaN(Number(part))).pop();
       outputField = lastNonNumericPart || field;
     } else {
       // Simple field without dots
@@ -2617,5 +2538,5 @@ export class SqlCompilerImpl implements SqlCompiler {
     }
 
     return outputField;
- }
+  }
 }

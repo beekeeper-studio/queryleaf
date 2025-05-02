@@ -79,7 +79,7 @@ export class SqlParserImpl implements SqlParser {
         database: 'PostgreSQL',
       });
 
-      log('Preprocessed AST: ', JSON.stringify(ast, null, 2))
+      log('Preprocessed AST: ', JSON.stringify(ast, null, 2));
 
       // Process the AST to properly handle nested fields
       const processedAst = this.postProcessAst(ast);
@@ -251,7 +251,7 @@ export class SqlParserImpl implements SqlParser {
           // It's likely a nested field, not a table reference
           column.expr.column = `${column.expr.table}.${column.expr.column}`;
           column.expr.table = null;
-          log(`Setting table to null for likely nested field: ${column.expr.column}`)
+          log(`Setting table to null for likely nested field: ${column.expr.column}`);
         }
       }
     });

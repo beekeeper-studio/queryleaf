@@ -614,6 +614,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         
         // Special handling for array access fields - we need to create field extraction
         // expressions to flatten nested array elements to root level
+        log(`arrayAccessFields: `, arrayAccessFields)
         if (arrayAccessFields.length > 0 && !isJoinQuery) {
           const arrayFieldsProject: Record<string, any> = {};
           
@@ -697,120 +698,10 @@ export class SqlCompilerImpl implements SqlCompiler {
           log('JOIN query from:', JSON.stringify(ast.from, null, 2));
           log('JOIN query where:', JSON.stringify(ast.where, null, 2));
 
-          // Add the $lookup stages we've already configured
-          const lookupStages = aggregateCommand.pipeline.filter((stage) => '$lookup' in stage);
-          log('Current $lookup stages:', JSON.stringify(lookupStages, null, 2));
-
           // For JOIN queries, we need to handle the projection differently to flatten the results
           // First, we'll create a projection that preserves the table aliases in the pipeline
           const renamedFieldsProject: Record<string, any> = {};
 
-          // Process each column and create a flattened naming structure
-          for (const column of ast.columns) {
-            if (typeof column === 'object' && column.expr) {
-              const table = column.expr.table;
-              const field = column.expr.column;
-
-              // The field name that will be used in the output
-              // If there's an alias, use it, otherwise use just the field name
-              const outputName = column.as || field;
-
-              if (table) {
-                // Different handling based on whether it's from the main table or a joined table
-                if (this.currentTableAliases.has(table)) {
-                  const isMainTable = table === ast.from[0].as;
-
-                  if (isMainTable) {
-                    // Fields from the main table can be accessed directly
-                    // Handle field names with table prefixes in the field itself (e.g., m.title in field)
-                    if (field.includes('.')) {
-                      const fieldParts = field.split('.');
-                      const actualField = fieldParts[fieldParts.length - 1];
-                      renamedFieldsProject[outputName] = `$${fieldParts[1]}`;  // Use main table field
-                      log(`$Main table field with prefix: ${field} -> ${outputName} = $${fieldParts[1]}`);
-                    } else {
-                      // Simple field from main table
-                      renamedFieldsProject[outputName] = `$${field}`;
-                      log(`$Main table field mapping: ${outputName} = $${field}`);
-                    }
-                    
-                    // If the output name has a table prefix and no alias was explicitly provided,
-                    // we also add a version without the prefix for compatibility
-                    if (outputName.includes('.') && !column.as) {
-                      const outParts = outputName.split('.');
-                      const cleanName = outParts[outParts.length - 1];
-                      renamedFieldsProject[cleanName] = `$${field}`;
-                      log(`$Added clean field name for compatibility: ${cleanName} = $${field}`);
-                    }
-                  } else {
-                    // Fields from joined tables need the alias prefix
-                    if (field.includes('.')) {
-                      const fieldParts = field.split('.');
-                      const actualField = fieldParts[fieldParts.length - 1];
-                      renamedFieldsProject[outputName] = `$${table}.${actualField}`;
-                      log(`$Joined table field with prefix: ${field} -> ${outputName} = $${table}.${actualField}`);
-                    } else {
-                      renamedFieldsProject[outputName] = `$${table}.${field}`;
-                      log(`$Joined table field mapping: ${outputName} = $${table}.${field}`);
-                    }
-                  }
-                } else {
-                  // Not a recognized alias, but still has a table prefix
-                  renamedFieldsProject[outputName] = `$${table}.${field}`;
-                }
-              } else if (column.expr.type === 'column_ref' && column.expr.column) {
-                // Handle case where column is a direct column reference without table
-                // For JOINS, we still need to know which table it belongs to
-
-                // If no table specified, try to determine which table it belongs to
-                // For simplicity, assume it's from the main table
-                renamedFieldsProject[outputName] = `$${column.expr.column}`;
-                log(`Simple column mapping: ${outputName} = $${column.expr.column}`);
-              } else {
-                // No table prefix specified, assume it's from the main table
-                renamedFieldsProject[outputName] = `$${field}`;
-              }
-            } else if (
-              column === '*' ||
-              (typeof column === 'object' && column.expr && column.expr.type === 'star')
-            ) {
-              // For SELECT *, we need to merge all fields from all tables
-              // This is a more complex case that needs a special projection approach
-
-              // For star queries in JOIN context, we need to use MongoDB's $mergeObjects
-              // to bring fields from joined documents up to the top level
-
-              // First, create a base object with all fields from the main table
-              renamedFieldsProject['mainFields'] = '$$ROOT';
-
-              // Then, for each joined table, create a merge field
-              for (let i = 1; i < ast.from.length; i++) {
-                const joinedTable = ast.from[i].as || this.extractTableName(ast.from[i]);
-                // Use all fields from the joined table, directly available at the top level
-                // This preserves their original field names
-                renamedFieldsProject[joinedTable] = `$${joinedTable}`;
-              }
-
-              // Use MongoDB's $replaceRoot to promote all fields to the root level
-              // This will be a separate stage after the projection
-              const mergeObjects = ['$mainFields'];
-              for (let i = 1; i < ast.from.length; i++) {
-                const joinedTable = ast.from[i].as || this.extractTableName(ast.from[i]);
-                mergeObjects.push(`$${joinedTable}`);
-              }
-
-              // We will add the $replaceRoot stage after this projection
-              aggregateCommand.pipeline.push({
-                $replaceRoot: {
-                  newRoot: {
-                    $mergeObjects: mergeObjects,
-                  },
-                },
-              });
-
-              log('Added $replaceRoot stage for merging joined tables in SELECT *');
-            }
-          }
 
           // Add a final stage to correctly handle JOIN results
           // We need the column values to be accessible directly at the top level,
@@ -1478,23 +1369,25 @@ export class SqlCompilerImpl implements SqlCompiler {
           if ('column' in column.expr && column.expr.column) {
             // First check if the column has a table reference that might be an alias
             let fieldName;
-            if (column.expr.table && column.expr.column) {
+            if (column.expr.table && column.expr.column && this.currentTableAliases.has(column.expr.table)) {
               fieldName = `${column.expr.table}.${column.expr.column}`;
               log(`$Using table-prefixed field in projection: ${fieldName}`);
             } else {
               fieldName = this.processFieldName(column.expr.column);
             }
-            fieldsToProject.push(fieldName);
+            const outputName = this.extractOutputField(fieldName, column.as)
+            fieldsToProject.push(outputName);
           } else if (column.expr.type === 'column_ref' && column.expr.column) {
             // Handle column_ref with possible table
             let fieldName;
-            if (column.expr.table && column.expr.column) {
+            if (column.expr.table && column.expr.column && this.currentTableAliases.has(column.expr.table)) {
               fieldName = `${column.expr.table}.${column.expr.column}`;
               log(`Using table-prefixed field in column_ref projection: ${fieldName}`);
             } else {
               fieldName = this.processFieldName(column.expr.column);
             }
-            fieldsToProject.push(fieldName);
+            const outputName = this.extractOutputField(fieldName, column.as)
+            fieldsToProject.push(outputName);
           } else if (
             column.expr.type === 'binary_expr' &&
             column.expr.operator === '.' &&
@@ -1513,7 +1406,8 @@ export class SqlCompilerImpl implements SqlCompiler {
             }
             if (fieldName && column.expr.right.column) {
               fieldName += '.' + column.expr.right.column;
-              fieldsToProject.push(fieldName);
+              const outputName = this.extractOutputField(fieldName, column.as)
+              fieldsToProject.push(outputName);
             }
           }
         } else if ('type' in column && column.type === 'column_ref' && column.column) {
@@ -1525,17 +1419,19 @@ export class SqlCompilerImpl implements SqlCompiler {
           } else {
             fieldName = this.processFieldName(column.column);
           }
-          fieldsToProject.push(fieldName);
+          const outputName = this.extractOutputField(fieldName, column.as)
+          fieldsToProject.push(outputName);
         } else if ('column' in column) {
           // Handle direct column with possible table
           let fieldName;
-          if (column.table && column.column) {
+          if (column.table && column.column && this.currentTableAliases.has(column.table)) {
             fieldName = `${column.table}.${column.column}`;
             log(`Using table-prefixed field in direct column: ${fieldName}`);
           } else {
             fieldName = this.processFieldName(column.column);
           }
-          fieldsToProject.push(fieldName);
+          const outputName = this.extractOutputField(fieldName, column.as)
+          fieldsToProject.push(outputName);
         }
       } else if (typeof column === 'string') {
         const fieldName = this.processFieldName(column);
@@ -1618,6 +1514,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         }
       } else {
         // Regular top-level field
+        log(`Adding ${fieldName} to projection`)
         projection[fieldName] = 1;
       }
     });

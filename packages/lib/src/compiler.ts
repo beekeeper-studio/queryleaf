@@ -833,9 +833,24 @@ export class SqlCompilerImpl implements SqlCompiler {
               // This makes the output match what SQL would normally return
               const includeFields: Record<string, any> = {};
               const outputFields = Object.keys(addFieldsStage);
+              // For JOINs, we need to explicitly exclude _id unless it was specifically requested
+              // or we have a SELECT * query
+              const hasExplicitIdField =
+                ast.columns &&
+                ast.columns.some((col: any) => {
+                  if (typeof col === 'object' && col.expr) {
+                    return (
+                      col.expr.column === '_id' || col.expr.alias === '_id' || col.as === '_id'
+                    );
+                  }
+                  return col === '_id';
+                });
 
-              // First, indicate that we want to keep everything
-              includeFields['_id'] = 1;
+              if (hasExplicitIdField) {
+                includeFields['_id'] = 1;
+              } else {
+                includeFields['_id'] = 0;
+              }
 
               for (const field of outputFields) {
                 log(`FIELD: `, field);
@@ -883,6 +898,23 @@ export class SqlCompilerImpl implements SqlCompiler {
         }
         // For non-JOIN queries with array access, we already added the projection stage earlier
         else if (Object.keys(projection).length > 0 && arrayAccessFields.length === 0) {
+          // Explicitly exclude _id field unless it was specifically requested
+          // OR if we have a GROUP BY (since the group key is stored in _id)
+          const isGroupBy = ast.groupby && ast.groupby.length > 0;
+
+          // Check if _id is explicitly requested in the columns
+          const hasExplicitIdField = ast.columns.some((col: any) => {
+            if (typeof col === 'object' && col.expr) {
+              return col.expr.column === '_id' || col.expr.alias === '_id' || col.as === '_id';
+            }
+            return col === '_id';
+          });
+
+          // If _id is not explicitly requested AND this is not a GROUP BY, exclude it
+          if (!hasExplicitIdField && !isGroupBy) {
+            projection['_id'] = 0;
+          }
+
           log('Standard projection stage:', JSON.stringify(projection, null, 2));
           aggregateCommand.pipeline.push({ $project: projection });
         }
@@ -901,6 +933,14 @@ export class SqlCompilerImpl implements SqlCompiler {
       // Set up projection
       if (ast.columns) {
         const projection = this.convertColumns(ast.columns);
+
+        // If this is a GROUP BY query, we need to keep _id in the projection
+        // (It's where MongoDB stores the group key)
+        const isGroupBy = ast.groupby && ast.groupby.length > 0;
+        if (isGroupBy && '_id' in projection && projection['_id'] === 0) {
+          delete projection['_id']; // Remove the exclusion
+        }
+
         findCommand.projection = projection;
       }
 
@@ -1390,6 +1430,17 @@ export class SqlCompilerImpl implements SqlCompiler {
       return {};
     }
 
+    // Check if _id is explicitly requested in the columns
+    const hasExplicitIdField = columns.some((col) => {
+      if (typeof col === 'object' && col.expr) {
+        return col.expr.column === '_id' || col.expr.alias === '_id' || col.as === '_id';
+      }
+      return col === '_id';
+    });
+
+    // Explicitly exclude _id field from projection unless it's specified in the columns
+    // We'll set this at the end of the method to account for field discovery during processing
+
     // First pass - process all fields
     const fieldsToProject: string[] = [];
     // Track array access fields for special handling
@@ -1400,6 +1451,8 @@ export class SqlCompilerImpl implements SqlCompiler {
         fieldName: string;
       }
     >();
+
+    // _id will be handled at the end of this method
 
     columns.forEach((column) => {
       if (typeof column === 'object') {
@@ -1537,6 +1590,13 @@ export class SqlCompilerImpl implements SqlCompiler {
 
         this.buildArrayAccessProjection(projection, fieldName, outputField);
       }
+    }
+
+    // Now that we've processed all fields, decide if we should exclude _id
+    // If no fields are explicitly requested, exclude _id
+    // The calling code in compileSelect will handle GROUP BY special cases
+    if (!hasExplicitIdField) {
+      projection['_id'] = 0;
     }
 
     log('Final projection:', JSON.stringify(projection, null, 2));

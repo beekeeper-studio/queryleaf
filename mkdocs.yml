@@ -1,4 +1,4 @@
-site_name: QueryLeaf
+site_name: QueryLeaf - SQL for MongoDB
 site_description: SQL to MongoDB query translator for NodeJS
 site_url: https://queryleaf.com/
 repo_url: https://github.com/beekeeper-studio/queryleaf
@@ -54,6 +54,7 @@ nav:
     - sql-syntax/array-access.md
     - sql-syntax/joins.md
     - sql-syntax/group-by.md
+  - Blog: blog/index.md
   - Support:
     - Pricing & Licensing: support/pricing.md
     - License FAQ: support/license-faq.md
@@ -84,6 +85,7 @@ plugins:
   - glightbox
   - minify:
       minify_html: true
+  - blog
 
 extra_css:
   - stylesheets/extra.css

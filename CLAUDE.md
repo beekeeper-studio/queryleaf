@@ -1,6 +1,6 @@
 # QueryLeaf Development Guide
 
-QueryLeaf is a SQL to MongoDB compiler / translator. It comes in three parts: library, http server, and postgres-wire server
+QueryLeaf is a SQL to MongoDB compiler / translator. It comes in three parts: library, cli, and server
 
 ## Build & Test Commands
 - Full build: `yarn build`

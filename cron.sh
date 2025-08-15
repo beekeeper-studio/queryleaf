@@ -9,6 +9,6 @@ cd "$SCRIPT_DIR"
 git fetch origin
 git checkout main
 git reset --hard origin/main
-/home/rathboma/.local/bin/mise exec node@18 -- bin/automate.sh
+/home/rathboma/.local/bin/mise exec node@18 -- ./automate.sh
 git push
 curl https://api.honeybadger.io/v1/check_in/nKIB9E &> /dev/null

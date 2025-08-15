@@ -7,8 +7,8 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd "$SCRIPT_DIR"
 
 git fetch origin
-git checkout master
-git reset --hard origin/master
+git checkout main
+git reset --hard origin/main
 /home/rathboma/.local/bin/mise exec node@18 -- bin/automate.sh
 git push
 curl https://api.honeybadger.io/v1/check_in/nKIB9E &> /dev/null

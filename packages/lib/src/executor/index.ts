@@ -229,11 +229,14 @@ export class MongoExecutor implements CommandExecutor {
       const result: Record<string, any> = {};
 
       for (const [key, value] of Object.entries(obj)) {
-        // Special handling for _id field and fields ending with Id
-        if (
-          (key === '_id' || key.endsWith('Id') || key.endsWith('Ids')) &&
-          typeof value === 'string'
-        ) {
+        // Match _id, camelCase Id/Ids, and snake_case *_id/*_ids
+        const isObjectIdField = (
+          key === '_id' ||
+          /(_id|_ids)$/i.test(key) ||
+          /Id$/.test(key) ||
+          /Ids$/.test(key)
+        );
+        if (isObjectIdField && typeof value === 'string') {
           try {
             // Check if it's a valid ObjectId string
             if (/^[0-9a-fA-F]{24}$/.test(value)) {
@@ -244,7 +247,13 @@ export class MongoExecutor implements CommandExecutor {
             // If it's not a valid ObjectId, keep it as a string
             console.warn(`Could not convert ${key} value to ObjectId: ${value}`);
           }
-        } else if (Array.isArray(value) && (key.endsWith('Ids') || key === 'productIds')) {
+        } else if (
+          Array.isArray(value) && (
+            /(_ids)$/i.test(key) ||
+            key.endsWith('Ids') ||
+            key === 'productIds'
+          )
+        ) {
           // For arrays of IDs
           result[key] = value.map((item: any) => {
             if (typeof item === 'string' && /^[0-9a-fA-F]{24}$/.test(item)) {

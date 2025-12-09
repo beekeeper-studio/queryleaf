@@ -1,7 +1,7 @@
 ---
 title: "MongoDB Atlas Search and Full-Text Indexing: SQL-Style Text Search with Advanced Analytics and Ranking"
 description: "Master MongoDB Atlas Search for sophisticated full-text search, semantic search, and search analytics. Learn search index creation, query optimization, and SQL-familiar search patterns for modern search applications."
-date: 2025-09-14
+date: 2025-12-08
 tags: [mongodb, atlas-search, full-text-search, search-indexing, text-analytics, sql, search-optimization]
 ---
 

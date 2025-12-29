@@ -237,4 +237,6 @@ MongoDB arrays don't have to be intimidating. With SQL syntax, you can leverage 
 
 Whether you're building e-commerce platforms, content management systems, or analytics dashboards, SQL-style array operations can simplify your MongoDB development workflow while keeping your queries readable and maintainable.
 
+> **QueryLeaf Integration**: QueryLeaf automatically translates SQL array syntax into MongoDB's native array operators, making complex array operations accessible through familiar SQL patterns. Array indexing, element filtering, and nested array queries are seamlessly handled through standard SQL syntax, enabling developers to work with MongoDB arrays using the SQL knowledge they already possess without learning MongoDB's aggregation pipeline syntax.
+
 The combination of SQL's clarity with MongoDB's flexibility gives you the best of both worlds – familiar syntax with powerful document database capabilities.

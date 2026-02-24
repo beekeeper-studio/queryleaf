@@ -119,17 +119,40 @@ describe('Edge Cases Integration Tests', () => {
       _id: objectId,
       name: 'ObjectId Test'
     });
-    
+
     // Act
     const queryLeaf = testSetup.getQueryLeaf();
     // Use the string representation of ObjectId in SQL
     const sql = `SELECT name FROM edge_test WHERE _id = '${objectId.toString()}'`;
-    
+
     const results = ensureArray(await queryLeaf.execute(sql));
-    
+
     // Assert
     expect(results).toHaveLength(1);
     expect(results[0].name).toBe('ObjectId Test');
+  });
+
+  // Regression test for: https://github.com/beekeeper-studio/queryleaf/issues/12
+  // Non-primary ObjectId fields (snake_case like transaction_id) were not being
+  // converted from string to ObjectId, causing queries to return no results.
+  test('should handle ObjectId conversions on non-primary snake_case id fields (issue #12)', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    const transactionId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'sale record',
+      transaction_id: transactionId,
+    });
+
+    // Act
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE transaction_id = '${transactionId.toString()}'`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    // Assert - should find the document by its non-primary ObjectId field
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('sale record');
   });
 
   test('should handle extremely large result sets', async () => {

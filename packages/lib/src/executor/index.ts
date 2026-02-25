@@ -231,7 +231,7 @@ export class MongoExecutor implements CommandExecutor {
       for (const [key, value] of Object.entries(obj)) {
         // Special handling for _id field and fields ending with Id
         if (
-          (key === '_id' || key.endsWith('Id') || key.endsWith('Ids')) &&
+          (key === '_id' || key.endsWith('Id') || key.endsWith('Ids') || key.endsWith('_id')) &&
           typeof value === 'string'
         ) {
           try {

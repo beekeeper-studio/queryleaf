@@ -155,6 +155,27 @@ describe('Edge Cases Integration Tests', () => {
     expect(results[0].name).toBe('sale record');
   });
 
+  // The real fix for issue #12: field name is arbitrary, conversion must be based on value shape
+  test('should handle ObjectId conversions on arbitrarily-named ObjectId fields', async () => {
+    // Arrange - field name has no Id/id suffix hint whatsoever
+    const db = testSetup.getDb();
+    const refId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'arbitrary field test',
+      source_ref: refId,
+    });
+
+    // Act
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE source_ref = '${refId.toString()}'`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    // Assert
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('arbitrary field test');
+  });
+
   test('should handle extremely large result sets', async () => {
     // Arrange
     const db = testSetup.getDb();

@@ -5,7 +5,7 @@ import {
   CursorResult,
   CursorOptions,
 } from '../interfaces';
-import { Document, MongoClient, ObjectId } from 'mongodb';
+import { Db, Document, MongoClient, ObjectId } from 'mongodb';
 
 /**
  * MongoDB command executor implementation for Node.js
@@ -75,9 +75,14 @@ export class MongoExecutor implements CommandExecutor {
           }
 
           // Create the cursor with all options at once
+          const findFilter = await this.resolveFilterObjectIds(
+            database,
+            command.collection,
+            command.filter || {}
+          );
           const findCursor = database
             .collection(command.collection)
-            .find(this.convertObjectIds(command.filter || {}), findOptions);
+            .find(findFilter, findOptions);
 
           // Always return array for the regular execute
           result = await findCursor.toArray();
@@ -89,20 +94,29 @@ export class MongoExecutor implements CommandExecutor {
             .insertMany(command.documents.map((doc) => this.convertObjectIds(doc)));
           break;
 
-        case 'UPDATE':
+        case 'UPDATE': {
+          const updateFilter = await this.resolveFilterObjectIds(
+            database,
+            command.collection,
+            command.filter || {}
+          );
           result = await database
             .collection(command.collection)
-            .updateMany(
-              this.convertObjectIds(command.filter || {}),
-              this.convertObjectIds(command.update)
-            );
+            .updateMany(updateFilter, this.convertObjectIds(command.update));
           break;
+        }
 
-        case 'DELETE':
+        case 'DELETE': {
+          const deleteFilter = await this.resolveFilterObjectIds(
+            database,
+            command.collection,
+            command.filter || {}
+          );
           result = await database
             .collection(command.collection)
-            .deleteMany(this.convertObjectIds(command.filter || {}));
+            .deleteMany(deleteFilter);
           break;
+        }
 
         case 'AGGREGATE':
           // Handle aggregation commands
@@ -176,9 +190,14 @@ export class MongoExecutor implements CommandExecutor {
           }
 
           // Create the cursor with all options at once
+          const cursorFilter = await this.resolveFilterObjectIds(
+            database,
+            command.collection,
+            command.filter || {}
+          );
           const findCursor = database
             .collection(command.collection)
-            .find(this.convertObjectIds(command.filter || {}), findOptions);
+            .find(cursorFilter, findOptions);
 
           // Return the cursor directly
           result = findCursor;
@@ -214,9 +233,79 @@ export class MongoExecutor implements CommandExecutor {
   }
 
   /**
-   * Convert string ObjectIds to MongoDB ObjectId instances
-   * @param obj Object to convert
-   * @returns Object with converted ObjectIds
+   * Sample one document from the collection to discover which fields contain ObjectIds,
+   * then apply conversions to the filter accordingly.
+   */
+  private async resolveFilterObjectIds(
+    db: Db,
+    collectionName: string,
+    filter: Record<string, any>
+  ): Promise<Record<string, any>> {
+    const objectIdFields = new Set<string>(['_id']);
+    const sample = await db.collection(collectionName).findOne({});
+    if (sample) {
+      for (const [key, value] of Object.entries(sample)) {
+        if (value instanceof ObjectId) {
+          objectIdFields.add(key);
+        }
+      }
+    }
+    return this.applyFilterConversions(filter, objectIdFields);
+  }
+
+  /**
+   * Recursively apply ObjectId conversions to a filter using a set of known ObjectId fields.
+   * Handles logical operators ($and, $or, $nor) and comparison operators ($eq, $in, etc.).
+   */
+  private applyFilterConversions(filter: any, objectIdFields: Set<string>): any {
+    if (!filter || typeof filter !== 'object') return filter;
+
+    if (Array.isArray(filter)) {
+      return filter.map((item) => this.applyFilterConversions(item, objectIdFields));
+    }
+
+    const result: Record<string, any> = {};
+    for (const [key, value] of Object.entries(filter)) {
+      if (key.startsWith('$')) {
+        // Logical operator ($and, $or, $nor) — recurse without a field context
+        result[key] = this.applyFilterConversions(value, objectIdFields);
+      } else if (objectIdFields.has(key)) {
+        // Known ObjectId field — convert any hex strings in the value
+        result[key] = this.convertToObjectId(value);
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Convert a filter value (or nested operator expression) to ObjectId where applicable.
+   */
+  private convertToObjectId(value: any): any {
+    if (typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
+      try {
+        return new ObjectId(value);
+      } catch {
+        return value;
+      }
+    }
+    if (Array.isArray(value)) {
+      return value.map((v) => this.convertToObjectId(v));
+    }
+    if (value && typeof value === 'object') {
+      // Operator expression like { $eq: '...', $in: [...], $ne: '...' }
+      const result: Record<string, any> = {};
+      for (const [op, v] of Object.entries(value)) {
+        result[op] = this.convertToObjectId(v);
+      }
+      return result;
+    }
+    return value;
+  }
+
+  /**
+   * Recursively convert _id fields in documents (used for INSERT payloads).
    */
   private convertObjectIds(obj: any): any {
     if (!obj) return obj;
@@ -227,46 +316,19 @@ export class MongoExecutor implements CommandExecutor {
 
     if (typeof obj === 'object') {
       const result: Record<string, any> = {};
-
       for (const [key, value] of Object.entries(obj)) {
-        // Special handling for _id field and fields ending with Id
-        if (
-          (key === '_id' || key.endsWith('Id') || key.endsWith('Ids') || key.endsWith('_id')) &&
-          typeof value === 'string'
-        ) {
+        if (key === '_id' && typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {
           try {
-            // Check if it's a valid ObjectId string
-            if (/^[0-9a-fA-F]{24}$/.test(value)) {
-              result[key] = new ObjectId(value);
-              continue;
-            }
-          } catch (error) {
-            // If it's not a valid ObjectId, keep it as a string
-            console.warn(`Could not convert ${key} value to ObjectId: ${value}`);
+            result[key] = new ObjectId(value);
+          } catch {
+            result[key] = value;
           }
-        } else if (Array.isArray(value) && (key.endsWith('Ids') || key === 'productIds')) {
-          // For arrays of IDs
-          result[key] = value.map((item: any) => {
-            if (typeof item === 'string' && /^[0-9a-fA-F]{24}$/.test(item)) {
-              try {
-                return new ObjectId(item);
-              } catch (error) {
-                return item;
-              }
-            }
-            return this.convertObjectIds(item);
-          });
-          continue;
         } else if (typeof value === 'object' && value !== null) {
-          // Recursively convert nested objects
           result[key] = this.convertObjectIds(value);
-          continue;
+        } else {
+          result[key] = value;
         }
-
-        // Copy other values as is
-        result[key] = value;
       }
-
       return result;
     }
 

@@ -67,8 +67,11 @@ export class SqlParserImpl implements SqlParser {
    */
   parse(sql: string): SqlStatement {
     try {
+      // Transform explicit ObjectId cast syntax before any other preprocessing
+      const preprocessedObjectIdSql = this.preprocessObjectIdCasts(sql);
+
       // First, handle nested dot notation in field access
-      const preprocessedNestedSql = this.preprocessNestedFields(sql);
+      const preprocessedNestedSql = this.preprocessNestedFields(preprocessedObjectIdSql);
 
       // Then transform array index notation to a form the parser can handle
       const preprocessedSql = this.preprocessArrayIndexes(preprocessedNestedSql);
@@ -97,7 +100,7 @@ export class SqlParserImpl implements SqlParser {
 
       if (errorMessage.includes('[')) {
         // Make a more aggressive transformation of the SQL for bracket syntax
-        const fallbackSql = this.aggressivePreprocessing(sql);
+        const fallbackSql = this.aggressivePreprocessing(this.preprocessObjectIdCasts(sql));
         log('Fallback SQL for array syntax:', fallbackSql);
         try {
           const ast = this.parser.astify(fallbackSql, { database: 'PostgreSQL' });
@@ -118,6 +121,28 @@ export class SqlParserImpl implements SqlParser {
 
       throw new Error(`SQL parsing error: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Preprocess explicit ObjectId cast syntax into a sentinel string literal
+   * that survives SQL parsing and is recognised later in convertValue().
+   *
+   * Supported forms (case-insensitive):
+   *   CAST('507f...' AS OBJECTID)  →  '__QL_OBJECTID_507f...__'
+   *   '507f...'::OBJECTID          →  '__QL_OBJECTID_507f...__'
+   */
+  private preprocessObjectIdCasts(sql: string): string {
+    // CAST('value' AS OBJECTID)
+    let result = sql.replace(
+      /CAST\s*\(\s*'([^']*)'\s+AS\s+OBJECTID\s*\)/gi,
+      (_match, value) => `'__QL_OBJECTID_${value}__'`
+    );
+    // 'value'::OBJECTID
+    result = result.replace(
+      /'([^']*)'\s*::\s*OBJECTID/gi,
+      (_match, value) => `'__QL_OBJECTID_${value}__'`
+    );
+    return result;
   }
 
   /**

@@ -155,6 +155,44 @@ describe('Edge Cases Integration Tests', () => {
     expect(results[0].name).toBe('sale record');
   });
 
+  test('should support explicit CAST(value AS OBJECTID) syntax', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    const refId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'cast test',
+      arbitrary_ref: refId,
+    });
+
+    // Act - field name has no Id hint; user explicitly casts the value
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE arbitrary_ref = CAST('${refId.toString()}' AS OBJECTID)`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('cast test');
+  });
+
+  test('should support explicit PostgreSQL-style ::OBJECTID cast syntax', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    const refId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'pg cast test',
+      arbitrary_ref: refId,
+    });
+
+    // Act
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE arbitrary_ref = '${refId.toString()}'::OBJECTID`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('pg cast test');
+  });
+
   // The real fix for issue #12: field name is arbitrary, conversion must be based on value shape
   test('should handle ObjectId conversions on arbitrarily-named ObjectId fields', async () => {
     // Arrange - field name has no Id/id suffix hint whatsoever

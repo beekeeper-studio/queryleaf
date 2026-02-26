@@ -250,7 +250,32 @@ export class MongoExecutor implements CommandExecutor {
         }
       }
     }
-    return this.applyFilterConversions(filter, objectIdFields);
+    // Schema-based conversion first, then resolve any explicit cast sentinels
+    const schemaConverted = this.applyFilterConversions(filter, objectIdFields);
+    return this.resolveSentinels(schemaConverted);
+  }
+
+  /**
+   * Recursively resolve { __qlObjectId: hex } sentinels emitted by the compiler
+   * for explicit CAST('...' AS OBJECTID) / '...'::OBJECTID expressions.
+   */
+  private resolveSentinels(value: any): any {
+    if (!value || typeof value !== 'object') return value;
+    if ('__qlObjectId' in value) {
+      try {
+        return new ObjectId(value.__qlObjectId);
+      } catch {
+        return value.__qlObjectId;
+      }
+    }
+    if (Array.isArray(value)) return value.map((v) => this.resolveSentinels(v));
+    // Skip non-plain objects (ObjectId, Date, RegExp, Buffer, etc.) — they are already
+    // properly typed BSON values and must not be destructured into plain objects.
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return value;
+    const result: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value)) result[k] = this.resolveSentinels(v);
+    return result;
   }
 
   /**
@@ -315,6 +340,14 @@ export class MongoExecutor implements CommandExecutor {
     }
 
     if (typeof obj === 'object') {
+      // Resolve explicit cast sentinels from compiler
+      if ('__qlObjectId' in obj) {
+        try {
+          return new ObjectId(obj.__qlObjectId);
+        } catch {
+          return obj.__qlObjectId;
+        }
+      }
       const result: Record<string, any> = {};
       for (const [key, value] of Object.entries(obj)) {
         if (key === '_id' && typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {

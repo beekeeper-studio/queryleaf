@@ -155,6 +155,74 @@ describe('Edge Cases Integration Tests', () => {
     expect(results[0].name).toBe('sale record');
   });
 
+  test('should NOT convert *_id fields that store integers to ObjectId', async () => {
+    const db = testSetup.getDb();
+    await db.collection('edge_test').insertOne({
+      name: 'integer id record',
+      external_id: 42,
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute("SELECT name FROM edge_test WHERE external_id = 42")
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('integer id record');
+  });
+
+  test('should NOT convert *_id fields that store strings to ObjectId', async () => {
+    const db = testSetup.getDb();
+    // A 24-char hex string stored as a plain string — NOT an ObjectId
+    const hexLikeString = 'aabbccddeeff001122334455';
+    await db.collection('edge_test').insertOne({
+      name: 'string id record',
+      external_id: hexLikeString,
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute(`SELECT name FROM edge_test WHERE external_id = '${hexLikeString}'`)
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('string id record');
+  });
+
+  test('should NOT convert _id to ObjectId when stored as an integer', async () => {
+    const db = testSetup.getDb();
+    await db.collection('edge_test').insertOne({
+      _id: 99 as any,
+      name: 'integer _id record',
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute("SELECT name FROM edge_test WHERE _id = 99")
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('integer _id record');
+  });
+
+  test('should NOT convert _id to ObjectId when stored as a plain string', async () => {
+    const db = testSetup.getDb();
+    // A 24-char hex string stored as a plain string _id — NOT an ObjectId
+    const stringId = 'aabbccddeeff001122334455';
+    await db.collection('edge_test').insertOne({
+      _id: stringId as any,
+      name: 'string _id record',
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute(`SELECT name FROM edge_test WHERE _id = '${stringId}'`)
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('string _id record');
+  });
+
   test('should support explicit CAST(value AS OBJECTID) syntax', async () => {
     // Arrange
     const db = testSetup.getDb();

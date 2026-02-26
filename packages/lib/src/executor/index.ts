@@ -241,7 +241,7 @@ export class MongoExecutor implements CommandExecutor {
     collectionName: string,
     filter: Record<string, any>
   ): Promise<Record<string, any>> {
-    const objectIdFields = new Set<string>(['_id']);
+    const objectIdFields = new Set<string>();
     const sample = await db.collection(collectionName).findOne({});
     if (sample) {
       for (const [key, value] of Object.entries(sample)) {
@@ -249,6 +249,9 @@ export class MongoExecutor implements CommandExecutor {
           objectIdFields.add(key);
         }
       }
+    } else {
+      // Empty collection: assume _id is ObjectId (MongoDB default)
+      objectIdFields.add('_id');
     }
     // Schema-based conversion first, then resolve any explicit cast sentinels
     const schemaConverted = this.applyFilterConversions(filter, objectIdFields);

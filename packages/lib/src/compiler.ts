@@ -1401,8 +1401,28 @@ export class SqlCompilerImpl implements SqlCompiler {
       }
       // Handle single values with value property
       else if ('value' in value) {
-        return value.value;
+        return this.resolveObjectIdSentinel(value.value);
       }
+    }
+    if (typeof value === 'string') {
+      return this.resolveObjectIdSentinel(value);
+    }
+    return value;
+  }
+
+  /**
+   * If the string is a sentinel injected by preprocessObjectIdCasts(), return a
+   * typed marker that the executor will convert to a real ObjectId instance.
+   * Otherwise return the string unchanged.
+   */
+  private resolveObjectIdSentinel(value: string): any {
+    if (
+      typeof value === 'string' &&
+      value.startsWith('__QL_OBJECTID_') &&
+      value.endsWith('__')
+    ) {
+      const hex = value.slice('__QL_OBJECTID_'.length, -2);
+      return { __qlObjectId: hex };
     }
     return value;
   }

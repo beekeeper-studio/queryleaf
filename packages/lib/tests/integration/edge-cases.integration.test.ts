@@ -119,17 +119,167 @@ describe('Edge Cases Integration Tests', () => {
       _id: objectId,
       name: 'ObjectId Test'
     });
-    
+
     // Act
     const queryLeaf = testSetup.getQueryLeaf();
     // Use the string representation of ObjectId in SQL
     const sql = `SELECT name FROM edge_test WHERE _id = '${objectId.toString()}'`;
-    
+
     const results = ensureArray(await queryLeaf.execute(sql));
-    
+
     // Assert
     expect(results).toHaveLength(1);
     expect(results[0].name).toBe('ObjectId Test');
+  });
+
+  // Regression test for: https://github.com/beekeeper-studio/queryleaf/issues/12
+  // Non-primary ObjectId fields (snake_case like transaction_id) were not being
+  // converted from string to ObjectId, causing queries to return no results.
+  test('should handle ObjectId conversions on non-primary snake_case id fields (issue #12)', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    const transactionId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'sale record',
+      transaction_id: transactionId,
+    });
+
+    // Act
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE transaction_id = '${transactionId.toString()}'`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    // Assert - should find the document by its non-primary ObjectId field
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('sale record');
+  });
+
+  test('should NOT convert *_id fields that store integers to ObjectId', async () => {
+    const db = testSetup.getDb();
+    await db.collection('edge_test').insertOne({
+      name: 'integer id record',
+      external_id: 42,
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute("SELECT name FROM edge_test WHERE external_id = 42")
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('integer id record');
+  });
+
+  test('should NOT convert *_id fields that store strings to ObjectId', async () => {
+    const db = testSetup.getDb();
+    // A 24-char hex string stored as a plain string — NOT an ObjectId
+    const hexLikeString = 'aabbccddeeff001122334455';
+    await db.collection('edge_test').insertOne({
+      name: 'string id record',
+      external_id: hexLikeString,
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute(`SELECT name FROM edge_test WHERE external_id = '${hexLikeString}'`)
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('string id record');
+  });
+
+  test('should NOT convert _id to ObjectId when stored as an integer', async () => {
+    const db = testSetup.getDb();
+    await db.collection('edge_test').insertOne({
+      _id: 99 as any,
+      name: 'integer _id record',
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute("SELECT name FROM edge_test WHERE _id = 99")
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('integer _id record');
+  });
+
+  test('should NOT convert _id to ObjectId when stored as a plain string', async () => {
+    const db = testSetup.getDb();
+    // A 24-char hex string stored as a plain string _id — NOT an ObjectId
+    const stringId = 'aabbccddeeff001122334455';
+    await db.collection('edge_test').insertOne({
+      _id: stringId as any,
+      name: 'string _id record',
+    });
+
+    const queryLeaf = testSetup.getQueryLeaf();
+    const results = ensureArray(
+      await queryLeaf.execute(`SELECT name FROM edge_test WHERE _id = '${stringId}'`)
+    );
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('string _id record');
+  });
+
+  test('should support explicit CAST(value AS OBJECTID) syntax', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    const refId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'cast test',
+      arbitrary_ref: refId,
+    });
+
+    // Act - field name has no Id hint; user explicitly casts the value
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE arbitrary_ref = CAST('${refId.toString()}' AS OBJECTID)`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('cast test');
+  });
+
+  test('should support explicit PostgreSQL-style ::OBJECTID cast syntax', async () => {
+    // Arrange
+    const db = testSetup.getDb();
+    const refId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'pg cast test',
+      arbitrary_ref: refId,
+    });
+
+    // Act
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE arbitrary_ref = '${refId.toString()}'::OBJECTID`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('pg cast test');
+  });
+
+  // The real fix for issue #12: field name is arbitrary, conversion must be based on value shape
+  test('should handle ObjectId conversions on arbitrarily-named ObjectId fields', async () => {
+    // Arrange - field name has no Id/id suffix hint whatsoever
+    const db = testSetup.getDb();
+    const refId = new ObjectId();
+    await db.collection('edge_test').insertOne({
+      name: 'arbitrary field test',
+      source_ref: refId,
+    });
+
+    // Act
+    const queryLeaf = testSetup.getQueryLeaf();
+    const sql = `SELECT name FROM edge_test WHERE source_ref = '${refId.toString()}'`;
+
+    const results = ensureArray(await queryLeaf.execute(sql));
+
+    // Assert
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe('arbitrary field test');
   });
 
   test('should handle extremely large result sets', async () => {

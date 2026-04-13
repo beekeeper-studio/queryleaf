@@ -45,6 +45,10 @@ The Apache 2.0 license includes an explicit patent grant from contributors. If y
 
 - **Community support**: Free via [GitHub Issues](https://github.com/beekeeper-studio/queryleaf/issues)
 
+## Do you offer a commercial license?
+
+Yes. If your organization requires a commercial license agreement beyond Apache 2.0 (for example, for compliance or procurement reasons), contact us at [sales@beekeeperstudio.io](mailto:sales@beekeeperstudio.io) and we'll work something out.
+
 ## Still Have Questions?
 
-Contact us at [info@queryleaf.com](mailto:info@queryleaf.com).
+Contact us at [support@beekeeperstudio.io](mailto:support@beekeeperstudio.io).

@@ -458,7 +458,7 @@ If you're still experiencing issues after trying these troubleshooting steps:
 2. **Example Projects**: Look at example projects for reference implementations
 3. **GitHub Issues**: Search the GitHub repository for similar issues
 4. **Community Support**: Ask questions in the GitHub Discussions section
-5. **Professional Support**: For commercial license holders, contact support@queryleaf.com
+5. **Professional Support**: Contact support@beekeeperstudio.io
 
 For bug reports or feature requests, please open an issue on the GitHub repository with:
 

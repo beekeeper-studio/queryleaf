@@ -451,7 +451,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
       <a href="getting-started/installation/" class="md-button md-button--primary">
         Get Started Free
       </a>
-      <a href="mailto:demo@queryleaf.com?subject=QueryLeaf Demo Request" class="md-button md-button--dark">
+      <a href="mailto:support@beekeeperstudio.io?subject=QueryLeaf Demo Request" class="md-button md-button--dark">
         Request a Demo
       </a>
     </div>

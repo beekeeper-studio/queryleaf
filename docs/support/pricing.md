@@ -1,64 +1,47 @@
-# Pricing & Licensing
+# Sponsors & Support
 
-QueryLeaf uses a dual-licensing model designed to balance open source availability with sustainable commercial development.
+QueryLeaf is free and open source under the [Apache License 2.0](https://github.com/beekeeper-studio/queryleaf/blob/main/LICENSE.md). You can use it for any purpose — personal projects, commercial products, SaaS applications, OEM distribution — with no restrictions or licensing fees.
 
-## Licensing Options
+## Why Sponsor?
 
-QueryLeaf is available under two licensing options:
+Sponsoring QueryLeaf helps fund ongoing development, maintenance, and support. In return, sponsors receive priority support, faster bug fixes, and prominent placement on the QueryLeaf repository and website.
 
-1. **AGPL v3 License (Community Edition)** - Free for open source projects, personal use, and evaluation
-2. **Commercial License** - For commercial use in proprietary applications
+## Sponsorship Tiers
 
-## Community Edition
+### S Tier — $2,000/month
 
-The Community Edition of QueryLeaf is free for personal use, trials under a commercial license, or free forever under AGPL.
+Premier sponsorship with maximum visibility and direct access.
 
-The Community Edition is licensed under the [GNU Affero General Public License v3 (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html). This license:
+- Large logo placement on GitHub README and website hero section
+- Dedicated sponsor spotlight on the website
+- Priority support with direct access to maintainers
+- Prioritized bug fixes and feature requests
+- Quarterly roadmap input
 
-- Allows free use, modification, and distribution of the software
-- Requires that any modifications to the software be shared under the same license
-- Requires source code disclosure if you run a modified version of the software as a service over a network
-- Has strong copyleft provisions that may affect proprietary applications
+### A Tier — $500/month
 
-The AGPL license is perfect for:
-- Open source projects
-- Personal projects
-- Educational purposes
-- Evaluation before purchase
+Prominent sponsorship with priority support.
 
-## Commercial License
+- Medium logo on GitHub README and website sponsors section
+- Priority email support
+- Prioritized bug fixes
+- Early access to new features
 
-Our Commercial License is designed for businesses and organizations that require more flexibility in how they use and distribute QueryLeaf. This license:
+### B Tier — $100/month
 
-- Removes the AGPL requirements for source code disclosure
-- Allows integration into proprietary software without license contamination
-- Provides commercial support options
-- Includes all components: Library, CLI, Web Server, and PostgreSQL Server
+Community sponsorship to support open source development.
 
-## Pricing Plans
+- Name listed on GitHub README and website sponsors section
+- Email support
+- Prioritized bug fixes
 
-See the [Pricing section of the homepage](/#pricing) for pricing
+## How to Sponsor
 
-## Server Components and Licensing
+To become a sponsor, contact us at [sponsors@queryleaf.com](mailto:sponsors@queryleaf.com). We'll get you set up and your placement live within a few days.
 
-Both the Web Server and PostgreSQL Server components are covered under the same dual-licensing model. This means:
+## Need Help Without Sponsoring?
 
-1. **Under AGPL**: If you run either server as a service, you must make the source code (including any modifications) available to users of that service.
-2. **Under Commercial License**: You can run and distribute the server components as part of your proprietary applications without AGPL obligations.
-
-The PostgreSQL Server component is particularly valuable for commercial users as it allows seamless integration with existing PostgreSQL clients and tools, making it ideal for enterprise deployments.
-
-## How to Purchase
-
-For more information or to purchase a commercial license:
-
-- **Developer License**: [Email sales@queryleaf.com](mailto:sales@queryleaf.com?subject=QueryLeaf Developer License)
-- **Business License**: [Email sales@queryleaf.com](mailto:sales@queryleaf.com?subject=QueryLeaf Business License)
-- **Enterprise License**: [Email enterprise@queryleaf.com](mailto:enterprise@queryleaf.com?subject=QueryLeaf Enterprise License)
-
-## Need Help?
-
-For questions about licensing or to discuss your specific needs, please [contact our sales team](mailto:sales@queryleaf.com).
+Community support is always available through [GitHub Issues](https://github.com/beekeeper-studio/queryleaf/issues). We do our best to respond to all issues, but sponsors receive prioritized attention.
 
 ---
 

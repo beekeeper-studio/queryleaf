@@ -446,85 +446,88 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
 <div id="pricing" class="pricing-section">
   <div class="container">
     <div class="section-title">
-      <h2>Pricing & Licensing</h2>
-      <p>Choose the plan that's right for your needs</p>
+      <h2>Sponsors & Support</h2>
+      <p>QueryLeaf is free and open source under the Apache 2.0 license. Sponsor the project to get priority support, faster fixes, and visibility for your company.</p>
     </div>
     
     <div class="pricing-tiers">
       <div class="pricing-card">
         <div class="pricing-header">
-          <h3>Professional</h3>
+          <h3>S Tier Sponsor</h3>
           <div class="pricing-cost">
-            <span class="price">$995/year</span>
+            <span class="price">$2,000</span>
+            <span class="price-period">/month</span>
           </div>
-          <p class="pricing-description">Up to 10 developers</p>
+          <p class="pricing-description">Premier sponsorship</p>
         </div>
         
         <div class="pricing-features">
           <ul>
-            <li>Commercial usage license</li>
-            <li>All features & packages</li>
-            <li>Email support</li>
-            <li>Use in internal applications only</li>
-            <li>Up to 2 MongoDB Servers</li>
+            <li>Large logo on README & website hero</li>
+            <li>Dedicated sponsor spotlight section</li>
+            <li>Priority support with direct access</li>
+            <li>Prioritized bug fixes & feature requests</li>
+            <li>Quarterly roadmap input</li>
           </ul>
         </div>
         
         <div class="pricing-footer">
-          <a href="https://buy.stripe.com/4gwcP69t9h2Y304fYY" target="_blank" class="md-button">
-            Purchase License
+          <a href="mailto:sponsors@queryleaf.com?subject=S Tier Sponsorship" class="md-button">
+            Become an S Tier Sponsor
           </a>
         </div>
       </div>
       
       <div class="pricing-card pricing-card-highlighted">
         <div class="pricing-header">
-          <h3>Business</h3>
+          <h3>A Tier Sponsor</h3>
           <div class="pricing-cost">
-            <span class="price">$1995/year</span>
+            <span class="price">$500</span>
+            <span class="price-period">/month</span>
           </div>
-          <p class="pricing-description">Up to 50 developers</p>
+          <p class="pricing-description">Prominent sponsorship</p>
         </div>
         
         <div class="pricing-features">
           <ul>
-            <li>Everything in Professional tier</li>
-            <li>More users</li>
+            <li>Medium logo on README & website</li>
+            <li>Listed in sponsors section</li>
             <li>Priority email support</li>
-            <li>Use in external SaaS applications</li>
-            <li>Up to 5 MongoDB Servers</li>
+            <li>Prioritized bug fixes</li>
+            <li>Early access to new features</li>
           </ul>
         </div>
         
         <div class="pricing-footer">
-          <a href="https://buy.stripe.com/14k4iAbBh3c8fMQaEF" class="md-button md-button--primary">
-            Purchase License
+          <a href="mailto:sponsors@queryleaf.com?subject=A Tier Sponsorship" class="md-button md-button--primary">
+            Become an A Tier Sponsor
           </a>
         </div>
       </div>
       
       <div class="pricing-card">
         <div class="pricing-header">
-          <h3>Enterprise</h3>
+          <h3>B Tier Sponsor</h3>
           <div class="pricing-cost">
-            <span class="price">Contact</span>
+            <span class="price">$100</span>
+            <span class="price-period">/month</span>
           </div>
-          <p class="pricing-description">For large organizations and OEM licensing</p>
+          <p class="pricing-description">Community sponsorship</p>
         </div>
         
         <div class="pricing-features">
           <ul>
-            <li>Everything in Business tier</li>
-            <li>Use in OEM applications</li>
-            <li>Unlimited MongoDB Servers</li>
-            <li>Commercial source license</li>
-            <li>Credit card or invoice payment</li>
+            <li>Name listed on README & website</li>
+            <li>Email support</li>
+            <li>Prioritized bug fixes</li>
+            <li>Support open source development</li>
+            <li>Our eternal gratitude</li>
           </ul>
         </div>
         
         <div class="pricing-footer">
-          <a href="mailto:sales@queryleaf.com?subject=QueryLeaf Enterprise License" class="md-button">
-            Contact Sales
+          <a href="mailto:sponsors@queryleaf.com?subject=B Tier Sponsorship" class="md-button">
+            Become a B Tier Sponsor
           </a>
         </div>
       </div>
@@ -533,27 +536,26 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
     <div class="community-card">
       <div class="community-content">
         <div class="community-header">
-          <h3>Community Edition</h3>
+          <h3>Free & Open Source</h3>
           <div class="community-cost">
-            <span class="price">$0</span>
-            <span class="price-period">forever</span>
+            <span class="price">Apache 2.0</span>
           </div>
         </div>
         <p class="community-description">
-          Free for personal use, trialing features during development, or free forever under the terms of the AGPL
+          QueryLeaf is completely free to use for any purpose — personal, commercial, SaaS, OEM, whatever you need. No restrictions.
         </p>
         <div class="community-features">
           <ul>
             <li>Full feature set including Library, CLI, and Server</li>
-            <li>AGPL v3 license</li>
+            <li>Apache 2.0 license — use it anywhere</li>
             <li>Community support via GitHub</li>
-            <li>Source code access</li>
+            <li>No usage limits or restrictions</li>
           </ul>
         </div>
       </div>
       <div class="community-cta" style="z-index:100; position:relative;">
         <a href="getting-started/installation/" class="md-button">
-          Get Started Free
+          Get Started
         </a>
       </div>
     </div>
@@ -598,7 +600,7 @@ const pgServer = new PostgresServer(mongoClient, 'mydb', {
 }
 
 .pricing-card-highlighted:before {
-  content: "Most Popular";
+  content: "Most Popular Tier";
   position: absolute;
   top: 0;
   right: 0;

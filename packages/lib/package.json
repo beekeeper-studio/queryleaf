@@ -24,7 +24,7 @@
     "query"
   ],
   "author": "",
-  "license": "AGPL-3.0",
+  "license": "Apache-2.0",
   "dependencies": {
     "debug": "^4.4.0",
     "node-sql-parser": "^4.11.0"

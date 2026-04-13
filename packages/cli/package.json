@@ -26,7 +26,7 @@
     "cli"
   ],
   "author": "",
-  "license": "AGPL-3.0",
+  "license": "Apache-2.0",
   "dependencies": {
     "@queryleaf/lib": "0.1.0",
     "chalk": "^4.1.2",

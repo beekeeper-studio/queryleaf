@@ -346,9 +346,4 @@ npm run docs:serve
 
 ## License
 
-QueryLeaf is dual-licensed:
-
-- [AGPL-3.0](LICENSE) for open source use
-- [Commercial license](COMMERCIAL_LICENSE.md) for commercial use with embedding
-
-For commercial licensing options and pricing, please visit [queryleaf.com](https://queryleaf.com) or contact us at info@queryleaf.com.
+QueryLeaf is licensed under the [Apache License 2.0](LICENSE.md). You are free to use, modify, and distribute it for any purpose — personal, open source, or commercial.

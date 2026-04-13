@@ -146,9 +146,6 @@ Features:
 
 ## License
 
-QueryLeaf is dual-licensed:
-
-- [AGPL-3.0](https://github.com/beekeeper-studio/queryleaf/blob/main/LICENSE.md) for open source use
-- [Commercial license](https://github.com/beekeeper-studio/queryleaf/blob/main/COMMERCIAL_LICENSE.md) for commercial use
+QueryLeaf is licensed under the [Apache License 2.0](https://github.com/beekeeper-studio/queryleaf/blob/main/LICENSE.md). You are free to use, modify, and distribute it for any purpose.
 
 For commercial licensing options, visit [queryleaf.com](https://queryleaf.com).

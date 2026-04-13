@@ -56,7 +56,6 @@ nav:
     - sql-syntax/group-by.md
   - Blog: blog/index.md
   - Support:
-    - Pricing & Licensing: support/pricing.md
     - License FAQ: support/license-faq.md
 
 markdown_extensions:

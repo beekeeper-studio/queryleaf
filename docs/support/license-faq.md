@@ -44,7 +44,6 @@ The Apache 2.0 license includes an explicit patent grant from contributors. If y
 ## How do I get support?
 
 - **Community support**: Free via [GitHub Issues](https://github.com/beekeeper-studio/queryleaf/issues)
-- **Priority support**: Available to [sponsors](/support/pricing/)
 
 ## Still Have Questions?
 

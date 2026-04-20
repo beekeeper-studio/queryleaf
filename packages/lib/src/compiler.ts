@@ -1275,13 +1275,14 @@ export class SqlCompilerImpl implements SqlCompiler {
           case 'NOT IN':
             filter[field] = { $nin: Array.isArray(value) ? value : [value] };
             break;
-          case 'LIKE':
-            // Convert SQL LIKE pattern to MongoDB regex
-            // % wildcard in SQL becomes .* in regex
-            // _ wildcard in SQL becomes . in regex
-            const pattern = String(value).replace(/%/g, '.*').replace(/_/g, '.');
+          case 'LIKE': {
+            // Escape JS regex metacharacters in the literal part of the pattern
+            // before translating SQL wildcards: % -> .*, _ -> .
+            const escaped = String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = escaped.replace(/%/g, '.*').replace(/_/g, '.');
             filter[field] = { $regex: new RegExp(`^${pattern}$`, 'i') };
             break;
+          }
           case 'BETWEEN':
             if (Array.isArray(right) && right.length === 2) {
               filter[field] = {

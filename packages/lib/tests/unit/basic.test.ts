@@ -382,11 +382,74 @@ describe('QueryLeaf', () => {
     });
   });
 
+  describe('LIKE operator regex escaping', () => {
+    const parser = new SqlParserImpl();
+    const compiler = new SqlCompilerImpl();
+
+    function getLikeRegex(command: any, field: string): RegExp | undefined {
+      if (command.type === 'FIND' && command.filter) {
+        return command.filter[field]?.$regex;
+      }
+      if (command.type === 'AGGREGATE') {
+        const matchStage = command.pipeline.find((s: any) => '$match' in s);
+        return matchStage?.$match[field]?.$regex;
+      }
+      return undefined;
+    }
+
+    test('escapes dots so they match literally', () => {
+      const sql = "SELECT * FROM users WHERE email LIKE 'user.name@example.com'";
+      const cmds = compiler.compile(parser.parse(sql));
+      const re = getLikeRegex(cmds[0], 'email');
+      expect(re).toBeDefined();
+      expect(re!.test('user.name@example.com')).toBe(true);
+      expect(re!.test('userXname@example.com')).toBe(false);
+    });
+
+    test('escapes parentheses so they match literally', () => {
+      const sql = "SELECT * FROM books WHERE title LIKE 'Books (Fiction)'";
+      const cmds = compiler.compile(parser.parse(sql));
+      const re = getLikeRegex(cmds[0], 'title');
+      expect(re).toBeDefined();
+      expect(re!.test('Books (Fiction)')).toBe(true);
+      expect(re!.test('Books Fiction')).toBe(false);
+    });
+
+    test('escapes $ so pattern is not an invalid mid-string anchor', () => {
+      const sql = "SELECT * FROM items WHERE label LIKE 'Price: $10'";
+      const cmds = compiler.compile(parser.parse(sql));
+      const re = getLikeRegex(cmds[0], 'label');
+      expect(re).toBeDefined();
+      expect(re!.test('Price: $10')).toBe(true);
+    });
+
+    test('preserves % wildcard (zero or more chars)', () => {
+      const sql = "SELECT * FROM users WHERE name LIKE 'Jo%'";
+      const cmds = compiler.compile(parser.parse(sql));
+      const re = getLikeRegex(cmds[0], 'name');
+      expect(re).toBeDefined();
+      expect(re!.test('Jo')).toBe(true);
+      expect(re!.test('John')).toBe(true);
+      expect(re!.test('Josephine')).toBe(true);
+      expect(re!.test('Al')).toBe(false);
+    });
+
+    test('preserves _ wildcard (exactly one char)', () => {
+      const sql = "SELECT * FROM users WHERE code LIKE 'A_C'";
+      const cmds = compiler.compile(parser.parse(sql));
+      const re = getLikeRegex(cmds[0], 'code');
+      expect(re).toBeDefined();
+      expect(re!.test('ABC')).toBe(true);
+      expect(re!.test('AC')).toBe(false);
+      expect(re!.test('ABBC')).toBe(false);
+    });
+  });
+
   describe('QueryLeaf', () => {
     test('should execute a SQL query', async () => {
       const queryLeaf = new QueryLeaf(mockMongoClient, 'test');
       const result = await queryLeaf.execute('SELECT * FROM users WHERE age > 18');
-      
+
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
       expect(result[0]).toHaveProperty('name');

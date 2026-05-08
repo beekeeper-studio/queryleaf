@@ -80,9 +80,7 @@ export class MongoExecutor implements CommandExecutor {
             command.collection,
             command.filter || {}
           );
-          const findCursor = database
-            .collection(command.collection)
-            .find(findFilter, findOptions);
+          const findCursor = database.collection(command.collection).find(findFilter, findOptions);
 
           // Always return array for the regular execute
           result = await findCursor.toArray();
@@ -112,9 +110,7 @@ export class MongoExecutor implements CommandExecutor {
             command.collection,
             command.filter || {}
           );
-          result = await database
-            .collection(command.collection)
-            .deleteMany(deleteFilter);
+          result = await database.collection(command.collection).deleteMany(deleteFilter);
           break;
         }
 

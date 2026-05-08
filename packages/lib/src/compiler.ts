@@ -1416,11 +1416,7 @@ export class SqlCompilerImpl implements SqlCompiler {
    * Otherwise return the string unchanged.
    */
   private resolveObjectIdSentinel(value: string): any {
-    if (
-      typeof value === 'string' &&
-      value.startsWith('__QL_OBJECTID_') &&
-      value.endsWith('__')
-    ) {
+    if (typeof value === 'string' && value.startsWith('__QL_OBJECTID_') && value.endsWith('__')) {
       const hex = value.slice('__QL_OBJECTID_'.length, -2);
       return { __qlObjectId: hex };
     }

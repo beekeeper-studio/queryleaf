@@ -4,10 +4,12 @@ import { Socket } from 'net';
 
 // Mock the QueryLeaf import
 jest.mock('@queryleaf/lib', () => {
+  const actual = jest.requireActual('@queryleaf/lib');
   return {
+    ...actual,
     QueryLeaf: class MockQueryLeaf {
       constructor(public client: any, public dbName: string) {}
-      
+
       async execute(sql: string): Promise<any> {
         if (sql === 'SELECT * FROM users') {
           return [

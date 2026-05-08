@@ -1,21 +1,11 @@
 import { Socket } from 'net';
-import { QueryLeaf } from '@queryleaf/lib';
+import { QueryLeaf, redactSql } from '@queryleaf/lib';
 import { Transform } from 'stream';
 import { randomInt } from 'crypto';
 import debugLib from 'debug';
 import { MongoClient, Document } from 'mongodb';
 
 const debug = debugLib('queryleaf:pg-server:protocol');
-
-// SQL statements may carry literal credentials (e.g., CREATE USER ... PASSWORD '...').
-// Mask them before they reach debug logs.
-function redactSql(sql: string | undefined): string {
-  if (!sql) return '';
-  return sql.replace(
-    /\b(PASSWORD|IDENTIFIED\s+BY|IDENTIFIED\s+WITH\s+\S+\s+AS)\s+('([^']|'')*'|"([^"]|"")*"|\S+)/gi,
-    '$1 ***'
-  );
-}
 
 // Strip password / query payloads from a parsed client message before logging.
 function redactMessage(message: { type?: string; string?: string; query?: string }): object {

@@ -125,5 +125,7 @@ export {
   DummyMongoClient,
 };
 
+export { redactSql } from './redact';
+
 // Re-export interfaces
 export * from './interfaces';

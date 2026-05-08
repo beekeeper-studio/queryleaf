@@ -1,17 +1,9 @@
 import { From, Parser as NodeSqlParser } from 'node-sql-parser';
 import { SqlParser, SqlStatement } from './interfaces';
+import { redactSql } from './redact';
 import debug from 'debug';
 
 const rawLog = debug('queryleaf:parser');
-
-// SQL fed to the parser may contain literal credentials (CREATE USER ... PASSWORD '...').
-// Strip them before they hit debug output.
-function redactSql(sql: string): string {
-  return sql.replace(
-    /\b(PASSWORD|IDENTIFIED\s+BY|IDENTIFIED\s+WITH\s+\S+\s+AS)\s+('([^']|'')*'|"([^"]|"")*"|\S+)/gi,
-    '$1 ***'
-  );
-}
 
 function log(message: string, ...args: unknown[]): void {
   const safeArgs = args.map((arg) => (typeof arg === 'string' ? redactSql(arg) : arg));

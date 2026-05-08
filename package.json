@@ -55,10 +55,28 @@
   "homepage": "https://github.com/beekeeper-studio/queryleaf#readme",
   "devDependencies": {
     "@types/node": "^22.13.10",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
     "typescript": "^5.8.2"
+  },
+  "resolutions": {
+    "follow-redirects": "^1.16.0",
+    "qs": "^6.14.2",
+    "diff": "^4.0.4",
+    "lodash": "^4.18.1",
+    "path-to-regexp": "0.1.13",
+    "glob/minimatch": "^3.1.5",
+    "test-exclude/minimatch": "^3.1.5",
+    "eslint/minimatch": "^3.1.5",
+    "@eslint/eslintrc/minimatch": "^3.1.5",
+    "@humanwhocodes/config-array/minimatch": "^3.1.5",
+    "jake/minimatch": "^3.1.5",
+    "filelist/minimatch": "^5.1.9",
+    "readdir-glob/minimatch": "^5.1.9",
+    "archiver-utils/minimatch": "^9.0.9",
+    "@typescript-eslint/typescript-estree/minimatch": "^9.0.9",
+    "jackspeak/minimatch": "^9.0.9"
   }
 }

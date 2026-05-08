@@ -13,7 +13,7 @@ class MockQueryLeaf {
   constructor(public client: any, public dbName: string) {}
   
   execute(query: string) {
-    log(`Mock executing query: ${query}`);
+    log(`Mock executing query of length ${query.length}`);
     if (query.includes('users')) {
       return [
         { name: 'John', age: 30 },

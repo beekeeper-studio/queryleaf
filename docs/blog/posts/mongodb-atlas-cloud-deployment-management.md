@@ -1339,7 +1339,7 @@ QueryLeaf provides seamless integration with MongoDB Atlas through familiar SQL 
 -- QueryLeaf Atlas connection and management
 -- Connect to Atlas cluster with connection string
 CONNECT TO atlas_cluster WITH (
-  connection_string = 'mongodb+srv://username:password@cluster.mongodb.net/database',
+  connection_string = 'mongodb+srv://<user>:<pass>@cluster.mongodb.net/database',
   read_preference = 'secondaryPreferred',
   write_concern = 'majority',
   max_pool_size = 50,

@@ -5,9 +5,14 @@ on:
     tags:
       - 'v*'  # Run on any tag that starts with v (e.g., v1.0.0)
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

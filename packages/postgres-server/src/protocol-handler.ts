@@ -1,10 +1,35 @@
 import { Socket } from 'net';
 import { QueryLeaf } from '@queryleaf/lib';
 import { Transform } from 'stream';
+import { randomInt } from 'crypto';
 import debugLib from 'debug';
 import { MongoClient, Document } from 'mongodb';
 
 const debug = debugLib('queryleaf:pg-server:protocol');
+
+// SQL statements may carry literal credentials (e.g., CREATE USER ... PASSWORD '...').
+// Mask them before they reach debug logs.
+function redactSql(sql: string | undefined): string {
+  if (!sql) return '';
+  return sql.replace(
+    /\b(PASSWORD|IDENTIFIED\s+BY|IDENTIFIED\s+WITH\s+\S+\s+AS)\s+('([^']|'')*'|"([^"]|"")*"|\S+)/gi,
+    '$1 ***'
+  );
+}
+
+// Strip password / query payloads from a parsed client message before logging.
+function redactMessage(message: { type?: string; string?: string; query?: string }): object {
+  const { string: _str, query, ...rest } = message;
+  const safe: Record<string, unknown> = { ...rest };
+  if (message.type === 'password') {
+    safe.string = '***';
+  } else if (message.type === 'query' || message.type === 'parse') {
+    safe.query = redactSql(query ?? message.string);
+  } else if (message.string !== undefined) {
+    safe.string = message.string;
+  }
+  return safe;
+}
 
 // Simplified protocol implementation for demo purposes
 interface BackendMessage {
@@ -564,7 +589,7 @@ export class ProtocolHandler {
         this.buffer = this.buffer.subarray(message.length);
         debug(`Message processed, remaining buffer length: ${this.buffer.length}`);
 
-        debug('Received message type:', messageType, message);
+        debug('Received message type:', messageType, redactMessage(message));
 
         // Handle the message
         this.handleMessage(message.type as MessageName, message);
@@ -634,7 +659,7 @@ export class ProtocolHandler {
    * Handle a startup message
    */
   private handleStartup(message: ClientMessage): void {
-    debug('Startup message:', message);
+    debug('Startup message received');
 
     // Extract user and database from parameters
     if (message.parameters) {
@@ -795,7 +820,7 @@ export class ProtocolHandler {
    * Handle a query message
    */
   private async handleQuery(queryString: string): Promise<void> {
-    debug('Query message:', queryString);
+    debug('Query message:', redactSql(queryString));
 
     if (!this.authenticated) {
       debug('Not authenticated, rejecting query');
@@ -912,7 +937,7 @@ export class ProtocolHandler {
   private handleParse(message: ClientMessage): void {
     const { name, query } = message;
 
-    debug('Parse message:', name, query);
+    debug('Parse message:', name, redactSql(query));
 
     try {
       // Store the prepared statement for later
@@ -931,7 +956,7 @@ export class ProtocolHandler {
    * Handle a bind message
    */
   private handleBind(message: ClientMessage): void {
-    debug('Bind message:', message);
+    debug('Bind message:', redactMessage(message));
 
     // In a real implementation, you would bind parameters to a prepared statement
     // For now, just acknowledge the bind
@@ -942,7 +967,7 @@ export class ProtocolHandler {
    * Handle a describe message
    */
   private handleDescribe(message: ClientMessage): void {
-    debug('Describe message:', message);
+    debug('Describe message:', redactMessage(message));
 
     const type = message.string;
     const name = message.name;
@@ -969,7 +994,7 @@ export class ProtocolHandler {
    * Handle an execute message
    */
   private async handleExecute(message: ClientMessage): Promise<void> {
-    debug('Execute message:', message);
+    debug('Execute message:', redactMessage(message));
 
     const { portal, maxRows } = message;
 
@@ -1060,9 +1085,9 @@ export class ProtocolHandler {
    * Send backend key data
    */
   private sendBackendKeyData(): void {
-    // Generate random process ID and key
-    const processId = Math.floor(Math.random() * 10000);
-    const secretKey = Math.floor(Math.random() * 1000000);
+    // The secret key authenticates CancelRequest messages, so it must be unguessable.
+    const processId = randomInt(1, 0x7fffffff);
+    const secretKey = randomInt(1, 0x7fffffff);
 
     this.sendMessage(this.serializer.backendKeyData(processId, secretKey));
   }

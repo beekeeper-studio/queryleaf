@@ -48,7 +48,7 @@
     "mongodb-memory-server": "^10.1.4",
     "pg": "^8.11.3",
     "portfinder": "^1.0.32",
-    "testcontainers": "^10.21.0",
+    "testcontainers": "^11.0.0",
     "ts-jest": "^29.2.6",
     "ts-node": "^10.9.2",
     "wait-port": "1.0.4"

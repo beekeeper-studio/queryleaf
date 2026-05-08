@@ -262,7 +262,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
 
-const client = new MongoClient('mongodb+srv://username:password@cluster.mongodb.net');
+const client = new MongoClient(process.env.MONGODB_URI);
 const db = client.db('file_storage_platform');
 
 // Advanced GridFS file management system

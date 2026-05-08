@@ -284,7 +284,7 @@ const { MongoClient } = require('mongodb');
 const { OpenAI } = require('openai');
 const tf = require('@tensorflow/tfjs-node');
 
-const client = new MongoClient('mongodb+srv://username:password@cluster.mongodb.net');
+const client = new MongoClient(process.env.MONGODB_URI);
 const db = client.db('advanced_ai_search_platform');
 
 // Advanced AI-powered search and recommendation engine

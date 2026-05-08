@@ -14,7 +14,7 @@ class MockQueryLeaf {
   constructor(public client: any, public dbName: string) {}
   
   execute(query: string): any[] {
-    log(`Mock executing query: ${query}`);
+    log(`Mock executing query of length ${query.length}`);
     if (query.includes('test')) {
       return [{ test: 'success' }];
     }

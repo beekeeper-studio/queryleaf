@@ -1,8 +1,14 @@
 import { From, Parser as NodeSqlParser } from 'node-sql-parser';
 import { SqlParser, SqlStatement } from './interfaces';
+import { redactSql } from './redact';
 import debug from 'debug';
 
-const log = debug('queryleaf:parser');
+const rawLog = debug('queryleaf:parser');
+
+function log(message: string, ...args: unknown[]): void {
+  const safeArgs = args.map((arg) => (typeof arg === 'string' ? redactSql(arg) : arg));
+  rawLog(message, ...safeArgs);
+}
 
 // Custom PostgreSQL mode with extensions to support our syntax needs
 const CUSTOM_DIALECT = {

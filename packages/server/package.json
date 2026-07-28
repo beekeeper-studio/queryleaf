@@ -30,7 +30,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@queryleaf/lib": "0.1.0",
-    "body-parser": "^1.20.2",
+    "body-parser": "^1.20.6",
     "cors": "^2.8.5",
     "express": "^4.22.1",
     "express-rate-limit": "^7.1.5",

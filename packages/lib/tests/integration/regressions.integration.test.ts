@@ -77,6 +77,30 @@ describe('Regression Integration Tests', () => {
       await queryLeaf.execute('DELETE FROM regression_test WHERE NULL = NULL');
       expect(await remainingNames()).toEqual(['Alfred', 'Alice', 'Bob']);
     });
+
+    // Each of these previously compiled to a filter that matched every document
+    // (or no filter at all), because part of the condition was dropped
+    test.each([
+      'DELETE FROM regression_test WHERE name <> category',
+      "DELETE FROM regression_test WHERE name != LOWER('X')",
+      'DELETE FROM regression_test WHERE name NOT IN (SELECT name FROM other)',
+      "DELETE FROM regression_test WHERE name NOT IN ('Bob', category)",
+      'DELETE FROM regression_test WHERE age <> 1 + 1',
+      "DELETE FROM regression_test WHERE age <> '30'::int",
+      'DELETE FROM regression_test WHERE age <> $1',
+      'DELETE FROM regression_test JOIN other ON regression_test.name = other.name',
+      "DELETE FROM regression_test, other WHERE category = 'user'",
+      "UPDATE regression_test SET category = 'x' WHERE name <> category",
+      "UPDATE regression_test JOIN other ON regression_test.name = other.name SET category = 'x'",
+      "UPDATE regression_test SET category = 'x' FROM other WHERE regression_test.name = other.name",
+    ])('rejects %s without modifying documents', async (sql) => {
+      const queryLeaf = testSetup.getQueryLeaf();
+      await expect(queryLeaf.execute(sql)).rejects.toThrow(/not supported|Unsupported/);
+
+      const docs = await testSetup.getDb().collection('regression_test').find().toArray();
+      expect(docs.map((d) => d.name).sort()).toEqual(['Alfred', 'Alice', 'Bob']);
+      expect(docs.map((d) => d.category).sort()).toEqual(['admin', 'user', 'user']);
+    });
   });
 
   describe('field names ending in _<number> are not treated as array indexes', () => {

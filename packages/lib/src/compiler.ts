@@ -1030,6 +1030,12 @@ export class SqlCompilerImpl implements SqlCompiler {
       throw new Error('Table name is required for UPDATE statements');
     }
 
+    // Ignoring the other tables would also drop their join conditions and
+    // widen the update to documents the statement never matched
+    if (ast.table.length > 1 || (Array.isArray(ast.from) && ast.from.length > 0)) {
+      throw new Error('UPDATE across multiple tables (JOIN or FROM) is not supported');
+    }
+
     const collection = ast.table[0].table;
 
     if (!ast.set || !Array.isArray(ast.set)) {
@@ -1164,6 +1170,11 @@ export class SqlCompilerImpl implements SqlCompiler {
       throw new Error('FROM clause is required for DELETE statements');
     }
 
+    // Ignoring the other tables would also drop their join conditions
+    if (ast.from.length > 1) {
+      throw new Error('DELETE across multiple tables is not supported');
+    }
+
     const collection = this.extractTableName(ast.from[0]);
 
     // Pre-process the AST to handle nested fields that might be parsed as table references
@@ -1244,7 +1255,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           field = this.processFieldName(left.column);
         }
 
-        const value = this.convertValue(right);
+        const value = this.convertWhereValue(right);
         const filter: Record<string, any> = {};
 
         log(`Building filter for ${field} ${operator} ${JSON.stringify(value)}`);
@@ -1412,13 +1423,39 @@ export class SqlCompilerImpl implements SqlCompiler {
     throw new Error(`Unsupported WHERE expression: ${detail}`);
   }
 
+  /**
+   * Convert the value side of a WHERE comparison. Only literals (or lists of
+   * literals for IN) can be translated. Anything else, such as a column, function,
+   * subquery, cast or parameter, would end up in the filter as a raw AST node, and
+   * with !=, <> or NOT IN that matches every document.
+   */
+  private convertWhereValue(value: any): any {
+    if (value?.type === 'expr_list' && Array.isArray(value.value)) {
+      return value.value.map((item: any) => this.convertWhereValue(item));
+    }
+    if (!this.isLiteral(value)) {
+      const kind = value?.ast ? 'subquery' : (value?.type ?? typeof value);
+      throw new Error(`Unsupported value in WHERE clause: ${kind}`);
+    }
+    return this.convertValue(value);
+  }
+
   private isLiteral(node: any): boolean {
     return (
       !!node &&
       typeof node === 'object' &&
-      ['number', 'string', 'single_quote_string', 'double_quote_string', 'bool', 'null'].includes(
-        node.type
-      )
+      [
+        'number',
+        'string',
+        'single_quote_string',
+        'double_quote_string',
+        'bool',
+        'null',
+        // DATE '...' / TIMESTAMP '...' compare as their string value
+        'date',
+        'time',
+        'timestamp',
+      ].includes(node.type)
     );
   }
 

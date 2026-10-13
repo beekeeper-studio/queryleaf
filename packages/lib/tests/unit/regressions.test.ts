@@ -108,6 +108,7 @@ describe('Regressions', () => {
               pipeline = stages;
               return { toArray: async () => [] };
             },
+            findOne: async () => null,
           }),
         }),
       } as unknown as MongoClient;
@@ -120,6 +121,46 @@ describe('Regressions', () => {
       const regex = pipeline[0].$match.name.$regex;
       expect(regex).toBeInstanceOf(RegExp);
       expect(regex.source).toBe('^Al.*$');
+    });
+  });
+
+  // https://github.com/beekeeper-studio/queryleaf/issues/7
+  describe('selecting a column that no document has', () => {
+    test.each<[string, string[] | undefined]>([
+      ['SELECT invalid_lmao FROM t', ['invalid_lmao']],
+      ['SELECT name, invalid_lmao AS x FROM t', ['name', 'invalid_lmao']],
+      ['SELECT u.name FROM t u', ['name']],
+      ['SELECT address.city FROM t', ['address.city']],
+      ['SELECT tags[0], items[1].name FROM t', ['tags', 'items']],
+      ['SELECT category, COUNT(*) AS total FROM t GROUP BY category', ['category']],
+      ['SELECT _id FROM t', undefined],
+      ['SELECT * FROM t', undefined],
+      ['SELECT u.name, o.total FROM users u JOIN orders o ON u._id = o.userId', undefined],
+    ])('records the fields read by %s', (sql, expected) => {
+      expect((compile(sql) as any).selectedFields).toEqual(expected);
+    });
+
+    const fakeClient = (rows: any[]) => {
+      // No document in the collection matches a $exists check
+      const findOne = jest.fn(async (_filter: any) => null);
+      const collection = { find: () => ({ toArray: async () => rows }), findOne };
+      const client = { db: () => ({ collection: () => collection }) } as unknown as MongoClient;
+      return { client, findOne };
+    };
+
+    test('the executor rejects a field that no document has', async () => {
+      const { client } = fakeClient([{}, {}]);
+      await expect(
+        new MongoExecutor(client, 'db').execute([compile('SELECT invalid_lmao FROM t')])
+      ).rejects.toThrow('Column "invalid_lmao" does not exist in collection "t"');
+    });
+
+    test('the executor does not look up fields the returned rows already have', async () => {
+      const { client, findOne } = fakeClient([{ name: 'Alice' }]);
+      await expect(
+        new MongoExecutor(client, 'db').execute([compile('SELECT name FROM t')])
+      ).resolves.toEqual([{ name: 'Alice' }]);
+      expect(findOne.mock.calls.filter(([filter]) => filter.$or)).toHaveLength(0);
     });
   });
 });

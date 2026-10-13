@@ -1030,6 +1030,12 @@ export class SqlCompilerImpl implements SqlCompiler {
       throw new Error('Table name is required for UPDATE statements');
     }
 
+    // Ignoring the other tables would also drop their join conditions and
+    // widen the update to documents the statement never matched
+    if (ast.table.length > 1 || (Array.isArray(ast.from) && ast.from.length > 0)) {
+      throw new Error('UPDATE across multiple tables (JOIN or FROM) is not supported');
+    }
+
     const collection = ast.table[0].table;
 
     if (!ast.set || !Array.isArray(ast.set)) {
@@ -1164,6 +1170,11 @@ export class SqlCompilerImpl implements SqlCompiler {
       throw new Error('FROM clause is required for DELETE statements');
     }
 
+    // Ignoring the other tables would also drop their join conditions
+    if (ast.from.length > 1) {
+      throw new Error('DELETE across multiple tables is not supported');
+    }
+
     const collection = this.extractTableName(ast.from[0]);
 
     // Pre-process the AST to handle nested fields that might be parsed as table references
@@ -1244,7 +1255,7 @@ export class SqlCompilerImpl implements SqlCompiler {
           field = this.processFieldName(left.column);
         }
 
-        const value = this.convertValue(right);
+        const value = this.convertWhereValue(right);
         const filter: Record<string, any> = {};
 
         log(`Building filter for ${field} ${operator} ${JSON.stringify(value)}`);
@@ -1300,6 +1311,24 @@ export class SqlCompilerImpl implements SqlCompiler {
         log('Produced filter:', JSON.stringify(filter, null, 2));
         return filter;
       }
+
+      // Constant conditions such as `1 = 1`, common in generated SQL
+      if (this.isLiteral(left) && this.isLiteral(right)) {
+        const result = this.compareLiterals(left.value, right.value, operator);
+        if (result !== undefined) {
+          return result ? {} : { $expr: false };
+        }
+      }
+    } else if (where.type === 'bool') {
+      return where.value ? {} : { $expr: false };
+    } else if (
+      // NOT (expr) is parsed as a function call named NOT
+      where.type === 'function' &&
+      typeof where.name === 'string' &&
+      where.name.toUpperCase() === 'NOT' &&
+      where.args?.value?.length === 1
+    ) {
+      return { $nor: [this.convertWhere(where.args.value[0])] };
     } else if (where.type === 'unary_expr') {
       // Handle NOT, IS NULL, IS NOT NULL
       if (
@@ -1386,9 +1415,70 @@ export class SqlCompilerImpl implements SqlCompiler {
       }
     }
 
-    log('Could not parse WHERE clause, returning empty filter');
-    // If we can't parse the where clause, return an empty filter
-    return {};
+    // Never fall back to an empty filter: for UPDATE and DELETE that would
+    // silently affect every document in the collection
+    const detail = [where.type, where.operator, typeof where.name === 'string' ? where.name : null]
+      .filter(Boolean)
+      .join(' ');
+    throw new Error(`Unsupported WHERE expression: ${detail}`);
+  }
+
+  /**
+   * Convert the value side of a WHERE comparison. Only literals (or lists of
+   * literals for IN) can be translated. Anything else, such as a column, function,
+   * subquery, cast or parameter, would end up in the filter as a raw AST node, and
+   * with !=, <> or NOT IN that matches every document.
+   */
+  private convertWhereValue(value: any): any {
+    if (value?.type === 'expr_list' && Array.isArray(value.value)) {
+      return value.value.map((item: any) => this.convertWhereValue(item));
+    }
+    if (!this.isLiteral(value)) {
+      const kind = value?.ast ? 'subquery' : (value?.type ?? typeof value);
+      throw new Error(`Unsupported value in WHERE clause: ${kind}`);
+    }
+    return this.convertValue(value);
+  }
+
+  private isLiteral(node: any): boolean {
+    return (
+      !!node &&
+      typeof node === 'object' &&
+      [
+        'number',
+        'string',
+        'single_quote_string',
+        'double_quote_string',
+        'bool',
+        'null',
+        // DATE '...' / TIMESTAMP '...' compare as their string value
+        'date',
+        'time',
+        'timestamp',
+      ].includes(node.type)
+    );
+  }
+
+  private compareLiterals(left: any, right: any, operator: string): boolean | undefined {
+    // In SQL, comparisons involving NULL are never true
+    if (left === null || right === null) return false;
+    switch (operator) {
+      case '=':
+        return left === right;
+      case '!=':
+      case '<>':
+        return left !== right;
+      case '>':
+        return left > right;
+      case '>=':
+        return left >= right;
+      case '<':
+        return left < right;
+      case '<=':
+        return left <= right;
+      default:
+        return undefined;
+    }
   }
 
   /**
@@ -1626,7 +1716,6 @@ export class SqlCompilerImpl implements SqlCompiler {
    * Converts various formats to MongoDB dot notation:
    * - address.zip stays as address.zip (MongoDB supports dot notation natively)
    * - items__ARRAY_0__name becomes items.0.name
-   * - items_0_name becomes items.0.name (from aggressive preprocessing)
    * - table.column is recognized as a nested field, not a table reference
    */
   private processFieldName(fieldName: string): string {
@@ -1640,10 +1729,6 @@ export class SqlCompilerImpl implements SqlCompiler {
 
     // Also handle the case where it's at the end of the string
     processed = processed.replace(/__ARRAY_(\d+)$/g, '.$1');
-
-    // Handle the aggressive preprocessing format - items_0_name => items.0.name
-    processed = processed.replace(/(\w+)_(\d+)_(\w+)/g, '$1.$2.$3');
-    processed = processed.replace(/(\w+)_(\d+)$/g, '$1.$2');
 
     // If there's still array indexing with bracket notation, convert it too
     // This handles any direct [0] syntax that might have made it through the parser
@@ -1668,18 +1753,8 @@ export class SqlCompilerImpl implements SqlCompiler {
     outputFieldName: string;
     arrayIndices: number[];
   } {
-    // First, process SQL-style array syntax (items__ARRAY_0__name) to MongoDB dot notation
-    const processedPath = this.processFieldName(fieldPath);
-
-    // Convert underscore-number patterns to standard dot notation (addresses_0 -> addresses.0)
-    const underscoreArrayPattern = /(\w+)_(\d+)/g;
-    const normalizedPath = processedPath.replace(underscoreArrayPattern, '$1.$2');
-
-    if (normalizedPath !== processedPath) {
-      log(
-        `$Converted underscore array path to dot notation: ${processedPath} -> ${normalizedPath}`
-      );
-    }
+    // Process SQL-style array syntax (items__ARRAY_0__name) to MongoDB dot notation
+    const normalizedPath = this.processFieldName(fieldPath);
 
     // Identify array indices
     const parts = normalizedPath.split('.');

@@ -347,6 +347,9 @@ export class MongoExecutor implements CommandExecutor {
           return obj.__qlObjectId;
         }
       }
+      // Leave non-plain objects (RegExp from LIKE, ObjectId, Date, etc.) intact
+      const proto = Object.getPrototypeOf(obj);
+      if (proto !== Object.prototype && proto !== null) return obj;
       const result: Record<string, any> = {};
       for (const [key, value] of Object.entries(obj)) {
         if (key === '_id' && typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value)) {

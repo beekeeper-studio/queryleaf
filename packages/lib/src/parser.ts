@@ -105,8 +105,8 @@ export class SqlParserImpl implements SqlParser {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       if (errorMessage.includes('[')) {
-        // Make a more aggressive transformation of the SQL for bracket syntax
-        const fallbackSql = this.aggressivePreprocessing(this.preprocessObjectIdCasts(sql));
+        // Retry with only the array index transformation for bracket syntax
+        const fallbackSql = this.preprocessArrayIndexes(this.preprocessObjectIdCasts(sql));
         log('Fallback SQL for array syntax:', fallbackSql);
         try {
           const ast = this.parser.astify(fallbackSql, { database: 'PostgreSQL' });
@@ -392,22 +392,6 @@ export class SqlParserImpl implements SqlParser {
       } else {
         // For simple array access like items[0] => items__ARRAY_0
         return `${field}__ARRAY_${index}`;
-      }
-    });
-  }
-
-  /**
-   * More aggressive preprocessing for SQL that contains array syntax
-   * This completely removes the array indexing and replaces it with a special column naming pattern
-   */
-  private aggressivePreprocessing(sql: string): string {
-    // Replace items[0].name with items_0_name
-    // This is a more aggressive approach that completely avoids bracket syntax
-    return sql.replace(/(\w+)\[(\d+)\](\.(\w+))?/g, (match, field, index, dotPart, subfield) => {
-      if (subfield) {
-        return `${field}_${index}_${subfield}`;
-      } else {
-        return `${field}_${index}`;
       }
     });
   }

@@ -50,6 +50,23 @@ class DummyCollection {
   }
 
   /**
+   * Log a findOne operation
+   * @param filter Query filter
+   * @returns A dummy document
+   */
+  async findOne(filter: any = {}) {
+    console.log(
+      `[DUMMY MongoDB] FIND ONE in ${this.dbName}.${this.name} with filter:`,
+      JSON.stringify(filter, null, 2)
+    );
+    return {
+      _id: 'dummy-id',
+      operation: 'findOne',
+      message: 'This is a dummy result from the DummyClient',
+    };
+  }
+
+  /**
    * Log an insertMany operation
    * @param documents Documents to insert
    * @returns A dummy result

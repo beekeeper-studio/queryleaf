@@ -303,6 +303,7 @@ export class SqlCompilerImpl implements SqlCompiler {
     }
 
     const collection = this.extractTableName(ast.from[0]);
+    const selectedFields = this.extractSelectedFields(ast);
 
     // Check if we have nested field projections
     const hasNestedFieldProjections =
@@ -338,6 +339,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         collection,
         pipeline: [],
       };
+      if (selectedFields) aggregateCommand.selectedFields = selectedFields;
 
       // Start with $match if we have a filter
       if (ast.where) {
@@ -929,6 +931,7 @@ export class SqlCompilerImpl implements SqlCompiler {
         collection,
         filter: ast.where ? this.convertWhere(ast.where) : undefined,
       };
+      if (selectedFields) findCommand.selectedFields = selectedFields;
 
       // Set up projection
       if (ast.columns) {
@@ -956,6 +959,31 @@ export class SqlCompilerImpl implements SqlCompiler {
 
       return findCommand;
     }
+  }
+
+  /**
+   * Collect the document fields read by the SELECT list, so the executor can reject columns
+   * that no document has. Table qualifiers are dropped and paths stop at the first array index.
+   * JOINs are skipped, since their columns come from more than one collection.
+   */
+  private extractSelectedFields(ast: any): string[] | undefined {
+    if (!Array.isArray(ast.columns) || ast.from.length > 1) return undefined;
+
+    const qualifiers = new Set([ast.from[0].table, ast.from[0].as].filter(Boolean));
+    const fields = new Set<string>();
+
+    for (const column of ast.columns) {
+      if (column?.expr?.type !== 'column_ref' || column.expr.column === '*') continue;
+
+      let parts = this.processFieldName(this.extractFieldPath(column)).split('.');
+      if (parts.length > 1 && qualifiers.has(parts[0])) parts = parts.slice(1);
+      const arrayIndex = parts.findIndex((part) => /^\d+$/.test(part));
+      const field = (arrayIndex === -1 ? parts : parts.slice(0, arrayIndex)).join('.');
+
+      if (field && field !== '_id') fields.add(field);
+    }
+
+    return fields.size > 0 ? Array.from(fields) : undefined;
   }
 
   /**

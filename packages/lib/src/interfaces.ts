@@ -46,6 +46,11 @@ export interface FindCommand extends BaseCommand {
     foreignField: string;
     as: string;
   }[];
+  /**
+   * Document fields read by the SELECT list. The executor rejects the query if no document in
+   * the collection has one of them, since MongoDB would return empty rows instead.
+   */
+  selectedFields?: string[];
 }
 
 /**
@@ -80,6 +85,11 @@ export interface DeleteCommand extends BaseCommand {
 export interface AggregateCommand extends BaseCommand {
   type: 'AGGREGATE';
   pipeline: Record<string, any>[];
+  /**
+   * Document fields read by the SELECT list. The executor rejects the query if no document in
+   * the collection has one of them, since MongoDB would return empty rows instead.
+   */
+  selectedFields?: string[];
 }
 
 /**

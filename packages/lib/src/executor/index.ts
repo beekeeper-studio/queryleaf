@@ -4,8 +4,10 @@ import {
   ExecutionResult,
   CursorResult,
   CursorOptions,
+  FindCommand,
+  AggregateCommand,
 } from '../interfaces';
-import { Db, Document, MongoClient, ObjectId } from 'mongodb';
+import { Collection, Db, Document, MongoClient, ObjectId } from 'mongodb';
 
 /**
  * MongoDB command executor implementation for Node.js
@@ -84,6 +86,7 @@ export class MongoExecutor implements CommandExecutor {
 
           // Always return array for the regular execute
           result = await findCursor.toArray();
+          await this.assertSelectedFieldsExist(database, command, result);
           break;
 
         case 'INSERT':
@@ -128,6 +131,7 @@ export class MongoExecutor implements CommandExecutor {
 
           // Always return array for the regular execute
           result = await aggregateCursor.toArray();
+          await this.assertSelectedFieldsExist(database, command, result);
           break;
 
         default:
@@ -185,6 +189,8 @@ export class MongoExecutor implements CommandExecutor {
             findOptions.batchSize = options.batchSize;
           }
 
+          await this.assertSelectedFieldsExist(database, command);
+
           // Create the cursor with all options at once
           const cursorFilter = await this.resolveFilterObjectIds(
             database,
@@ -211,6 +217,8 @@ export class MongoExecutor implements CommandExecutor {
             aggregateOptions.batchSize = options.batchSize;
           }
 
+          await this.assertSelectedFieldsExist(database, command);
+
           // Create the cursor with options
           result = database.collection(command.collection).aggregate(pipeline, aggregateOptions);
           break;
@@ -226,6 +234,79 @@ export class MongoExecutor implements CommandExecutor {
     }
 
     return result as CursorResult<T>;
+  }
+
+  /**
+   * MongoDB returns an empty row per document when a projected field doesn't exist, which hides
+   * misspelled columns. Throw instead when no document in the collection has a selected field.
+   * Empty collections are allowed, since they have no fields to check against.
+   * @param rows Rows the query returned. Fields with a value in one of them aren't looked up.
+   */
+  private async assertSelectedFieldsExist(
+    db: Db,
+    command: FindCommand | AggregateCommand,
+    rows: Document[] = []
+  ): Promise<void> {
+    const unseen = (command.selectedFields || []).filter(
+      (field) =>
+        !rows.some((row) => this.valuesAtPath(row, field.split('.')).some((v) => v != null))
+    );
+    if (unseen.length === 0) return;
+
+    const collection = db.collection(command.collection);
+    const missing = await this.findMissingFields(collection, unseen);
+    if (missing.length === 0) return;
+    if (rows.length === 0 && !(await collection.findOne({}, { projection: { _id: 1 } }))) return;
+
+    const names = missing.map((field) => `"${field}"`).join(', ');
+    throw new Error(
+      missing.length === 1
+        ? `Column ${names} does not exist in collection "${command.collection}"`
+        : `Columns ${names} do not exist in collection "${command.collection}"`
+    );
+  }
+
+  /**
+   * Return the fields that no document in the collection has. Each lookup finds a document with
+   * at least one of the remaining fields, so this usually takes a single query.
+   */
+  private async findMissingFields(collection: Collection, fields: string[]): Promise<string[]> {
+    let missing = fields;
+    while (missing.length > 0) {
+      // MongoDB rejects overlapping projection paths, so only project the outermost ones
+      const projection = Object.fromEntries(
+        missing
+          .filter((field) => !missing.some((other) => field.startsWith(`${other}.`)))
+          .map((field) => [field, 1])
+      );
+      const doc = await collection.findOne(
+        { $or: missing.map((field) => ({ [field]: { $exists: true } })) },
+        { projection }
+      );
+      if (!doc) return missing;
+
+      const remaining = missing.filter(
+        (field) => this.valuesAtPath(doc, field.split('.')).length === 0
+      );
+      // Can't tell which field the document matched on, so don't report any as missing
+      if (remaining.length === missing.length) return [];
+      missing = remaining;
+    }
+    return missing;
+  }
+
+  /**
+   * Values at a field path, looking inside arrays the way MongoDB queries do.
+   */
+  private valuesAtPath(value: any, path: string[]): unknown[] {
+    if (path.length === 0) return [value];
+    if (Array.isArray(value)) return value.flatMap((item) => this.valuesAtPath(item, path));
+    if (!value || typeof value !== 'object') return [];
+    // Don't look inside BSON values like ObjectId and Date
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return [];
+    if (!Object.prototype.hasOwnProperty.call(value, path[0])) return [];
+    return this.valuesAtPath(value[path[0]], path.slice(1));
   }
 
   /**

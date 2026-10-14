@@ -156,4 +156,67 @@ describe('Regression Integration Tests', () => {
       expect(totals).toEqual({ admin: 1, user: 1 });
     });
   });
+
+  // https://github.com/beekeeper-studio/queryleaf/issues/7
+  describe('selecting a column that no document has', () => {
+    beforeEach(async () => {
+      await testSetup
+        .getDb()
+        .collection('regression_test')
+        .updateOne({ name: 'Bob' }, { $set: { nickname: 'Bobby', address: { city: 'Paris' } } });
+    });
+
+    // Each of these used to return one empty row per document instead of an error
+    test.each([
+      'SELECT invalid_lmao FROM regression_test',
+      'SELECT name, invalid_lmao FROM regression_test',
+      'SELECT invalid_lmao AS x FROM regression_test',
+      'SELECT r.invalid_lmao FROM regression_test r',
+      'SELECT invalid_lmao[0] FROM regression_test',
+      "SELECT invalid_lmao FROM regression_test WHERE name = 'Nobody'",
+      'SELECT invalid_lmao, COUNT(*) AS total FROM regression_test GROUP BY invalid_lmao',
+    ])('rejects %s', async (sql) => {
+      const queryLeaf = testSetup.getQueryLeaf();
+      await expect(queryLeaf.execute(sql)).rejects.toThrow(
+        'Column "invalid_lmao" does not exist in collection "regression_test"'
+      );
+    });
+
+    test('rejects a nested field that no document has', async () => {
+      const queryLeaf = testSetup.getQueryLeaf();
+      await expect(queryLeaf.execute('SELECT address.zip FROM regression_test')).rejects.toThrow(
+        'Column "address.zip" does not exist in collection "regression_test"'
+      );
+    });
+
+    test('rejects it when returning a cursor', async () => {
+      const queryLeaf = testSetup.getQueryLeaf();
+      await expect(
+        queryLeaf.executeCursor('SELECT invalid_lmao FROM regression_test')
+      ).rejects.toThrow('Column "invalid_lmao" does not exist in collection "regression_test"');
+    });
+
+    test('allows fields that only some documents have', async () => {
+      const queryLeaf = testSetup.getQueryLeaf();
+      const results = ensureArray(
+        await queryLeaf.execute("SELECT name, nickname FROM regression_test WHERE name = 'Alice'")
+      );
+      expect(results).toEqual([{ name: 'Alice' }]);
+
+      const cities = ensureArray(
+        await queryLeaf.execute('SELECT address.city AS city FROM regression_test')
+      );
+      expect(cities.map((r) => r.city).filter(Boolean)).toEqual(['Paris']);
+
+      const cursor = await queryLeaf.executeCursor('SELECT nickname FROM regression_test');
+      const nicknames = await cursor!.toArray();
+      await cursor!.close();
+      expect(nicknames.map((r) => r.nickname).filter(Boolean)).toEqual(['Bobby']);
+    });
+
+    test('allows any column on an empty collection', async () => {
+      const queryLeaf = testSetup.getQueryLeaf();
+      expect(await queryLeaf.execute('SELECT invalid_lmao FROM regression_missing')).toEqual([]);
+    });
+  });
 });
